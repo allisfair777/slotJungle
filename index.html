@@ -49,6 +49,7 @@
     <audio id="spinSound" src="spin.wav"></audio>
     <audio id="winSound" src="win.wav"></audio>
     <audio id="clickSound" src="click.wav"></audio>
+    <audio id="hitSound" src="hit.wav"></audio>
 
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
@@ -57,6 +58,29 @@
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
+
+        // Web Audio Context for synthesized sound fallbacks
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSynthesizedHit() {
+            try {
+                if (!audioCtx) audioCtx = new AudioContext();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.5 * soundsVolume, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } catch(e) {}
+        }
 
         // Load Images & Assets
         const bgImg = new Image(); bgImg.src = "casino_background.png";
@@ -92,7 +116,7 @@
         let currentBet = betSteps[betIndex];
         let isBetAllActive = false;
         
-        // 1 & 3) Muted by default with balanced low volume (0.2)
+        // Muted by default with balanced low volume (0.2)
         let musicMuted = true;
         let musicVolume = 0.2;
         let soundsMuted = true;
@@ -117,10 +141,11 @@
         let screenShakeTimer = 0;
         let screenShakeIntensity = 0;
 
+        // Hazard & Aiming State (0 = Left, 1 = Center, 2 = Right)
         let activeHazard = null;
         let hazardActive = false;
         let currentAimReel = 1;
-        let stoneProjectile = null;
+        let stoneProjectile = null; // { startX, startY, targetX, targetY, progress, trail: [] }
 
         let stars = [];
         for (let i = 0; i < 40; i++) {
@@ -138,7 +163,7 @@
         const spinPlankRect = { x: 550, y: 455, w: 225, h: 65 };
         const restartWheelRect = { x: 25, y: 455, w: 65, h: 65 };
         
-        // 1) Top Right Control Rack Aligned right with Spin Temple edge (X: 550 to 775)
+        // Top Right Control Rack Aligned right with Spin Temple edge
         const musicMuteRect = { x: 550, y: 15, w: 32, h: 32 };
         const musicSliderRect = { x: 590, y: 23, w: 75, h: 16 };
         const playlistDropdownRect = { x: 550, y: 55, w: 115, h: 30 };
@@ -147,19 +172,27 @@
         const soundsSliderRect = { x: 725, y: 23, w: 50, h: 16 };
         const timeToggleRect = { x: 685, y: 55, w: 90, h: 30 };
 
-        // 2) Slingshot in middle, Left Vine on left, Right Vine on right (Cannon spot between rectangles)
-        const leftVineBtnRect = { x: 310, y: 455, w: 50, h: 65 };
-        const slingshotBtnRect = { x: 370, y: 455, w: 90, h: 65 };
-        const rightVineBtnRect = { x: 470, y: 455, w: 50, h: 65 };
+        // 1) Slingshot placed exactly in middle (x: 405), Left Vine at x: 355, Right Vine at x: 455
+        const leftVineBtnRect = { x: 355, y: 455, w: 45, h: 65 };
+        const slingshotBtnRect = { x: 405, y: 455, w: 45, h: 65 };
+        const rightVineBtnRect = { x: 455, y: 455, w: 45, h: 65 };
 
         function updateAudioVolumes() {
             soundtracks.forEach((track, idx) => {
                 if (track) track.volume = (musicMuted || idx !== currentTrackIndex || !musicPlaying) ? 0 : musicVolume;
             });
+            // 6) Ambient Rainforest Bird Chirp Sound tied to Sounds control
             let rainforest = document.getElementById("rainforestSound");
-            if (rainforest) rainforest.volume = musicMuted ? 0 : musicVolume * 0.5;
+            if (rainforest) {
+                rainforest.volume = soundsMuted ? 0 : soundsVolume * 0.6;
+                if (!soundsMuted && rainforest.paused) {
+                    rainforest.play().catch(e => {});
+                } else if (soundsMuted && !rainforest.paused) {
+                    rainforest.pause();
+                }
+            }
 
-            let sfxList = [document.getElementById("spinSound"), document.getElementById("winSound"), document.getElementById("clickSound")];
+            let sfxList = [document.getElementById("spinSound"), document.getElementById("winSound"), document.getElementById("clickSound"), document.getElementById("hitSound")];
             sfxList.forEach(sfx => {
                 if (sfx) sfx.volume = soundsMuted ? 0 : soundsVolume;
             });
@@ -169,7 +202,11 @@
             if (!soundsMuted && soundObj && soundObj.src) {
                 soundObj.currentTime = 0;
                 soundObj.volume = soundsVolume;
-                soundObj.play().catch(e => {});
+                soundObj.play().catch(e => {
+                    if (soundObj.id === 'hitSound') playSynthesizedHit();
+                });
+            } else if (!soundsMuted && soundObj && soundObj.id === 'hitSound') {
+                playSynthesizedHit();
             }
         }
 
@@ -178,7 +215,7 @@
             screenShakeIntensity = intensity;
         }
 
-        // Helper to draw images with background white removal (transparency)
+        // 8) Improved Transparent Image Renderer (Removes both white and sky-blue backgrounds)
         function drawTransparentImage(img, x, y, w, h, flipH = false) {
             if (!img.complete || img.naturalWidth === 0) return;
             const tempCanvas = document.createElement('canvas');
@@ -190,8 +227,13 @@
             let imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
             let data = imgData.data;
             for (let i = 0; i < data.length; i += 4) {
-                // If pixel is white or near-white, make it transparent
-                if (data[i] > 230 && data[i+1] > 230 && data[i+2] > 230) {
+                let r = data[i], g = data[i+1], b = data[i+2];
+                // Remove White/Near-White
+                if (r > 220 && g > 220 && b > 220) {
+                    data[i+3] = 0;
+                }
+                // Remove Sky Blue / Cyan (e.g., #55ccff, #87ceeb)
+                else if (b > 200 && r < 120 && g > 150) {
                     data[i+3] = 0;
                 }
             }
@@ -309,6 +351,7 @@
         }
 
         function drawHazardAndDefenseGraphics() {
+            // 4) Active Hazard Graphic (Positional Threat over Target Reel)
             if (hazardActive && activeHazard) {
                 ctx.save();
                 let hx = activeHazard.x;
@@ -332,20 +375,40 @@
                 ctx.restore();
             }
 
+            // 2) Brown Aim Arc Indicator above current aim reel
             let symbolSize = 80;
             let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
             let aimX = reelStartX + currentAimReel * 125 + 40;
-            ctx.strokeStyle = "#4dff4d";
-            ctx.lineWidth = 3;
+            ctx.save();
+            ctx.strokeStyle = "#8b4513";
+            ctx.lineWidth = 4;
             ctx.beginPath();
             ctx.arc(aimX, 190, 45, Math.PI, 0, false);
             ctx.stroke();
+            ctx.restore();
 
+            // 3) Stone Projectile Trajectory with Trailing Feedback Dots
             if (stoneProjectile) {
-                stoneProjectile.progress += 0.06;
+                stoneProjectile.progress += 0.05;
                 let curX = stoneProjectile.startX + (stoneProjectile.targetX - stoneProjectile.startX) * stoneProjectile.progress;
-                let curY = stoneProjectile.startY + (stoneProjectile.targetY - stoneProjectile.startY) * stoneProjectile.progress - Math.sin(stoneProjectile.progress * Math.PI) * 70;
+                let curY = stoneProjectile.startY + (stoneProjectile.targetY - stoneProjectile.startY) * stoneProjectile.progress - Math.sin(stoneProjectile.progress * Math.PI) * 75;
                 
+                stoneProjectile.trail.push({ x: curX, y: curY, alpha: 1.0 });
+
+                // Render Dotted Trail
+                ctx.save();
+                stoneProjectile.trail.forEach((pt, i) => {
+                    pt.alpha -= 0.04;
+                    if (pt.alpha > 0) {
+                        ctx.fillStyle = `rgba(212, 163, 115, ${pt.alpha})`;
+                        ctx.beginPath();
+                        ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+                ctx.restore();
+
+                // Draw Flying Stone
                 ctx.fillStyle = "#e0e0e0";
                 ctx.strokeStyle = "#222";
                 ctx.lineWidth = 2;
@@ -355,38 +418,35 @@
                 ctx.stroke();
 
                 if (stoneProjectile.progress >= 1.0) {
-                    stoneProjectile = null;
                     if (activeHazard && activeHazard.reelIndex === currentAimReel) {
                         hazardActive = false;
                         activeHazard = null;
                         bannerText = "DIRECT HIT! HAZARD DEFEATED!";
-                        playSound(winSound);
+                        // 5) Hit Sound Effect Trigger
+                        playSound(document.getElementById("hitSound"));
                         bannerAlpha = 2.0;
                     } else if (activeHazard) {
                         bannerText = "MISSED TARGET!";
                         bannerAlpha = 2.0;
                     }
-                    // 4) If no hazard was active, no message is triggered at all!
+                    stoneProjectile = null;
                 }
             }
 
-            // Draw Transparent Vine & Slingshot Controls
+            // 1 & 7) Render Slingshot and Vine Controls (No Text Labels)
             ctx.save();
             
-            // Left Vine (Normal)
+            // Left Vine
             ctx.globalAlpha = (currentAimReel === 0) ? 0.4 : 1.0;
             drawTransparentImage(vineImg, leftVineBtnRect.x, leftVineBtnRect.y, leftVineBtnRect.w, leftVineBtnRect.h, false);
-            ctx.globalAlpha = 1.0;
-            drawOutlinedText("LEFT", leftVineBtnRect.x + 25, leftVineBtnRect.y + 55, "9px Arial bold", SOFT_GOLD);
 
-            // Right Vine (Mirrored horizontally)
+            // Right Vine (Mirrored)
             ctx.globalAlpha = (currentAimReel === 2) ? 0.4 : 1.0;
             drawTransparentImage(vineImg, rightVineBtnRect.x, rightVineBtnRect.y, rightVineBtnRect.w, rightVineBtnRect.h, true);
             ctx.globalAlpha = 1.0;
-            drawOutlinedText("RIGHT", rightVineBtnRect.x + 25, rightVineBtnRect.y + 55, "9px Arial bold", SOFT_GOLD);
 
-            // Slingshot in center
-            drawTransparentImage(slingshotImg, slingshotBtnRect.x + 15, slingshotBtnRect.y + 5, 60, 55, false);
+            // Slingshot in exact middle
+            drawTransparentImage(slingshotImg, slingshotBtnRect.x - 5, slingshotBtnRect.y, 55, 60, false);
 
             ctx.restore();
         }
@@ -587,11 +647,12 @@
                 let targetX = reelStartX + currentAimReel * 125 + 40;
                 
                 stoneProjectile = {
-                    startX: slingshotBtnRect.x + 45,
+                    startX: slingshotBtnRect.x + 22,
                     startY: slingshotBtnRect.y,
                     targetX: targetX,
                     targetY: 185,
-                    progress: 0
+                    progress: 0,
+                    trail: []
                 };
                 return;
             }
@@ -657,7 +718,8 @@
                             triggerScreenShake(300, 6);
                             for(let i=0; i<35; i++) flowerParticles.push(new FlowerParticle(400, 250));
                         } else {
-                            if (Math.random() < 0.6) {
+                            // High Hazard Encounter Chance on Non-Winning Spins
+                            if (Math.random() < 0.7) {
                                 let hazards = ['jaguar', 'vine'];
                                 let chosen = hazards[Math.floor(Math.random() * hazards.length)];
                                 let targetReel = Math.floor(Math.random() * 3);
@@ -743,7 +805,7 @@
             drawOutlinedText(`Highest Loot  $${highscore.toLocaleString()}`, 95, 28, "18px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
             drawOutlinedText(`Treasure Hunt $${balance.toLocaleString()}`, 95, 55, "20px Arial bold", WHITE, DARK_BROWN, "left");
 
-            // --- CONTROL RACK ALIGNED WITH SPIN TEMPLE RIGHT EDGE ---
+            // --- CONTROL RACK ALIGNED WITH SPIN TEMPLE ---
             
             // Column 1: Music & Playlist
             ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
