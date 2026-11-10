@@ -150,7 +150,7 @@
         let screenShakeIntensity = 0;
 
         // Hazard & Aiming State (0 = Left, 1 = Center, 2 = Right)
-        let activeHazard = null; // { type, name, reelIndex, x, y, penaltyPct, timeoutTimer }
+        let activeHazard = null; // { type, name, reelIndex, x, y, penaltyPct, startTime }
         let hazardActive = false;
         let currentAimReel = 1;
         let stoneProjectile = null; // { startX, startY, targetX, targetY, progress, trail: [] }
@@ -319,7 +319,6 @@
                 let linearY = startY + t * (endY - startY);
                 let arcLift = Math.sin(t * Math.PI) * 14;
                 let y = linearY - arcLift;
-                nodes.py = y;
                 nodes.push({ x, y });
             }
             return nodes;
@@ -356,10 +355,11 @@
         }
 
         function drawHazardAndDefenseGraphics() {
-            // Hazard Timeout Check (6 Seconds)
+            // Hazard Timeout Check (Extended to 15 Seconds for 2-3 Aiming Chances)
             if (hazardActive && activeHazard) {
+                let hazardDurationMs = 15000;
                 let elapsed = Date.now() - activeHazard.startTime;
-                let timeLeft = Math.max(0, 6000 - elapsed);
+                let timeLeft = Math.max(0, hazardDurationMs - elapsed);
                 if (timeLeft === 0) {
                     // Timeout Penalty
                     let penalty = Math.max(500, Math.floor(balance * activeHazard.penaltyPct));
@@ -382,8 +382,8 @@
                     // Render Countdown Timer Bar above hazard
                     ctx.fillStyle = "#333";
                     ctx.fillRect(hx - 25, hy - 40, 50, 6);
-                    ctx.fillStyle = timeLeft < 2000 ? "#ff3333" : "#4dff4d";
-                    ctx.fillRect(hx - 25, hy - 40, 50 * (timeLeft / 6000), 6);
+                    ctx.fillStyle = timeLeft < 3000 ? "#ff3333" : "#4dff4d";
+                    ctx.fillRect(hx - 25, hy - 40, 50 * (timeLeft / hazardDurationMs), 6);
                     ctx.restore();
                 }
             }
@@ -444,7 +444,7 @@
                         hazardActive = false;
                         activeHazard = null;
                     } else if (activeHazard) {
-                        bannerText = "MISSED TARGET!";
+                        bannerText = "MISSED TARGET! TRY AGAIN!";
                         bannerAlpha = 2.0;
                     }
                     stoneProjectile = null;
@@ -636,7 +636,6 @@
             if (x >= soundsSliderRect.x && x <= soundsSliderRect.x + soundsSliderRect.w && y >= soundsSliderRect.y && y <= soundsSliderRect.y + soundsSliderRect.h) {
                 soundsVolume = Math.max(0, Math.min(1, (x - soundsSliderRect.x) / soundsSliderRect.w));
                 updateAudioVolumes();
-                playSound(clickSound);
                 return;
             }
 
