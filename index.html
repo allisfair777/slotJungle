@@ -71,14 +71,14 @@
                 let osc = audioCtx.createOscillator();
                 let gain = audioCtx.createGain();
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.15);
-                gain.gain.setValueAtTime(0.5 * soundsVolume, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.18);
+                gain.gain.setValueAtTime(0.6 * soundsVolume, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.15);
+                osc.stop(audioCtx.currentTime + 0.18);
             } catch(e) {}
         }
 
@@ -92,8 +92,16 @@
         const speakerImg = new Image(); speakerImg.src = "speaker.png";
         const muteImg = new Image(); muteImg.src = "mute.png";
         
+        // Custom Controls & Hazard Assets
         const slingshotImg = new Image(); slingshotImg.src = "slingshot.png";
         const vineImg = new Image(); vineImg.src = "leftvine.png";
+
+        const hazardImages = {
+            'jaguar': (() => { let img = new Image(); img.src = "jaguar.png"; return img; })(),
+            'venomvine': (() => { let img = new Image(); img.src = "venomvine.png"; return img; })(),
+            'quicksand': (() => { let img = new Image(); img.src = "quicksand.png"; return img; })(),
+            'templecurse': (() => { let img = new Image(); img.src = "templecurse.png"; return img; })()
+        };
 
         const symbols = ["Shiba", "Tiger", "Parrot", "Monkey", "Jungle"];
         const symbolImages = {
@@ -142,7 +150,7 @@
         let screenShakeIntensity = 0;
 
         // Hazard & Aiming State (0 = Left, 1 = Center, 2 = Right)
-        let activeHazard = null;
+        let activeHazard = null; // { type, name, reelIndex, x, y, penaltyPct, timeoutTimer }
         let hazardActive = false;
         let currentAimReel = 1;
         let stoneProjectile = null; // { startX, startY, targetX, targetY, progress, trail: [] }
@@ -172,16 +180,15 @@
         const soundsSliderRect = { x: 725, y: 23, w: 50, h: 16 };
         const timeToggleRect = { x: 685, y: 55, w: 90, h: 30 };
 
-        // 1) Slingshot placed exactly in middle (x: 405), Left Vine at x: 355, Right Vine at x: 455
-        const leftVineBtnRect = { x: 355, y: 455, w: 45, h: 65 };
-        const slingshotBtnRect = { x: 405, y: 455, w: 45, h: 65 };
-        const rightVineBtnRect = { x: 455, y: 455, w: 45, h: 65 };
+        // Perfectly Centered Control Cluster in Bottom Gap (Slingshot centered at x: 380)
+        const leftVineBtnRect = { x: 325, y: 455, w: 45, h: 65 };
+        const slingshotBtnRect = { x: 380, y: 455, w: 45, h: 65 };
+        const rightVineBtnRect = { x: 435, y: 455, w: 45, h: 65 };
 
         function updateAudioVolumes() {
             soundtracks.forEach((track, idx) => {
                 if (track) track.volume = (musicMuted || idx !== currentTrackIndex || !musicPlaying) ? 0 : musicVolume;
             });
-            // 6) Ambient Rainforest Bird Chirp Sound tied to Sounds control
             let rainforest = document.getElementById("rainforestSound");
             if (rainforest) {
                 rainforest.volume = soundsMuted ? 0 : soundsVolume * 0.6;
@@ -215,7 +222,7 @@
             screenShakeIntensity = intensity;
         }
 
-        // 8) Improved Transparent Image Renderer (Removes both white and sky-blue backgrounds)
+        // Transparent Image Renderer (Removes white and sky-blue backgrounds)
         function drawTransparentImage(img, x, y, w, h, flipH = false) {
             if (!img.complete || img.naturalWidth === 0) return;
             const tempCanvas = document.createElement('canvas');
@@ -228,12 +235,9 @@
             let data = imgData.data;
             for (let i = 0; i < data.length; i += 4) {
                 let r = data[i], g = data[i+1], b = data[i+2];
-                // Remove White/Near-White
                 if (r > 220 && g > 220 && b > 220) {
                     data[i+3] = 0;
-                }
-                // Remove Sky Blue / Cyan (e.g., #55ccff, #87ceeb)
-                else if (b > 200 && r < 120 && g > 150) {
+                } else if (b > 200 && r < 120 && g > 150) {
                     data[i+3] = 0;
                 }
             }
@@ -315,6 +319,7 @@
                 let linearY = startY + t * (endY - startY);
                 let arcLift = Math.sin(t * Math.PI) * 14;
                 let y = linearY - arcLift;
+                nodes.py = y;
                 nodes.push({ x, y });
             }
             return nodes;
@@ -351,31 +356,39 @@
         }
 
         function drawHazardAndDefenseGraphics() {
-            // 4) Active Hazard Graphic (Positional Threat over Target Reel)
+            // Hazard Timeout Check (6 Seconds)
             if (hazardActive && activeHazard) {
-                ctx.save();
-                let hx = activeHazard.x;
-                let hy = activeHazard.y;
-
-                if (activeHazard.type === 'jaguar') {
-                    ctx.fillStyle = "#ffcc00";
-                    ctx.shadowColor = "#ff3300";
-                    ctx.shadowBlur = 15;
-                    ctx.beginPath(); ctx.arc(hx - 15, hy, 10, 0, Math.PI * 2); ctx.fill();
-                    ctx.beginPath(); ctx.arc(hx + 15, hy, 10, 0, Math.PI * 2); ctx.fill();
-                    drawOutlinedText("⚠️ JAGUAR", hx, hy - 20, "11px Arial bold", "#ff4d4d");
+                let elapsed = Date.now() - activeHazard.startTime;
+                let timeLeft = Math.max(0, 6000 - elapsed);
+                if (timeLeft === 0) {
+                    // Timeout Penalty
+                    let penalty = Math.max(500, Math.floor(balance * activeHazard.penaltyPct));
+                    balance = Math.max(0, balance - penalty);
+                    bannerText = `TIME OUT! -$${penalty.toLocaleString()} PENALTY`;
+                    bannerAlpha = 3.0;
+                    hazardActive = false;
+                    activeHazard = null;
                 } else {
-                    ctx.strokeStyle = "#4dff4d";
-                    ctx.lineWidth = 6;
-                    ctx.beginPath();
-                    ctx.moveTo(hx - 20, hy + 10); ctx.quadraticCurveTo(hx, hy - 20, hx + 20, hy + 10);
-                    ctx.stroke();
-                    drawOutlinedText("⚠️ VINE", hx, hy - 20, "11px Arial bold", "#4dff4d");
+                    ctx.save();
+                    let hx = activeHazard.x;
+                    let hy = activeHazard.y;
+
+                    // Render Custom Hazard Image with Transparent Background
+                    let hImg = hazardImages[activeHazard.type];
+                    if (hImg) {
+                        drawTransparentImage(hImg, hx - 30, hy - 30, 60, 60, false);
+                    }
+
+                    // Render Countdown Timer Bar above hazard
+                    ctx.fillStyle = "#333";
+                    ctx.fillRect(hx - 25, hy - 40, 50, 6);
+                    ctx.fillStyle = timeLeft < 2000 ? "#ff3333" : "#4dff4d";
+                    ctx.fillRect(hx - 25, hy - 40, 50 * (timeLeft / 6000), 6);
+                    ctx.restore();
                 }
-                ctx.restore();
             }
 
-            // 2) Brown Aim Arc Indicator above current aim reel
+            // Brown Aim Arc Indicator above current aim reel
             let symbolSize = 80;
             let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
             let aimX = reelStartX + currentAimReel * 125 + 40;
@@ -387,7 +400,7 @@
             ctx.stroke();
             ctx.restore();
 
-            // 3) Stone Projectile Trajectory with Trailing Feedback Dots
+            // Stone Projectile Trajectory with Trailing Feedback Dots
             if (stoneProjectile) {
                 stoneProjectile.progress += 0.05;
                 let curX = stoneProjectile.startX + (stoneProjectile.targetX - stoneProjectile.startX) * stoneProjectile.progress;
@@ -395,9 +408,8 @@
                 
                 stoneProjectile.trail.push({ x: curX, y: curY, alpha: 1.0 });
 
-                // Render Dotted Trail
                 ctx.save();
-                stoneProjectile.trail.forEach((pt, i) => {
+                stoneProjectile.trail.forEach((pt) => {
                     pt.alpha -= 0.04;
                     if (pt.alpha > 0) {
                         ctx.fillStyle = `rgba(212, 163, 115, ${pt.alpha})`;
@@ -408,7 +420,6 @@
                 });
                 ctx.restore();
 
-                // Draw Flying Stone
                 ctx.fillStyle = "#e0e0e0";
                 ctx.strokeStyle = "#222";
                 ctx.lineWidth = 2;
@@ -419,12 +430,19 @@
 
                 if (stoneProjectile.progress >= 1.0) {
                     if (activeHazard && activeHazard.reelIndex === currentAimReel) {
+                        // HIT TARGET: Bonus Money & Flower Celebration Drop
+                        let bonus = 5000 * (betIndex + 1);
+                        balance += bonus;
+                        bannerText = `DIRECT HIT! BONUS +$${bonus.toLocaleString()}!`;
+                        bannerAlpha = 3.0;
+                        playSound(document.getElementById("hitSound"));
+                        playSound(winSound);
+                        triggerScreenShake(300, 6);
+                        for (let i = 0; i < 40; i++) {
+                            flowerParticles.push(new FlowerParticle(canvas.width / 2, 250));
+                        }
                         hazardActive = false;
                         activeHazard = null;
-                        bannerText = "DIRECT HIT! HAZARD DEFEATED!";
-                        // 5) Hit Sound Effect Trigger
-                        playSound(document.getElementById("hitSound"));
-                        bannerAlpha = 2.0;
                     } else if (activeHazard) {
                         bannerText = "MISSED TARGET!";
                         bannerAlpha = 2.0;
@@ -433,21 +451,16 @@
                 }
             }
 
-            // 1 & 7) Render Slingshot and Vine Controls (No Text Labels)
+            // Render Slingshot & Vine Controls (No Text Labels)
             ctx.save();
-            
-            // Left Vine
             ctx.globalAlpha = (currentAimReel === 0) ? 0.4 : 1.0;
             drawTransparentImage(vineImg, leftVineBtnRect.x, leftVineBtnRect.y, leftVineBtnRect.w, leftVineBtnRect.h, false);
 
-            // Right Vine (Mirrored)
             ctx.globalAlpha = (currentAimReel === 2) ? 0.4 : 1.0;
             drawTransparentImage(vineImg, rightVineBtnRect.x, rightVineBtnRect.y, rightVineBtnRect.w, rightVineBtnRect.h, true);
             ctx.globalAlpha = 1.0;
 
-            // Slingshot in exact middle
             drawTransparentImage(slingshotImg, slingshotBtnRect.x - 5, slingshotBtnRect.y, 55, 60, false);
-
             ctx.restore();
         }
 
@@ -485,7 +498,7 @@
             drawOutlinedText("-5%", hazX + 130, rowY[1], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
             drawOutlinedText("Quicksand", hazX + 25, rowY[2], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
             drawOutlinedText("-10%", hazX + 130, rowY[2], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
-            drawOutlinedText("Temple Curse", hazX + 25, rowY[3], "11px Arial bold", "#ff4d4d", DARK_BROWN, "left");
+            drawOutlinedText("Temple Curse", hazX + 25, rowY[3], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
             drawOutlinedText("-15%", hazX + 130, rowY[3], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
 
             ctx.restore();
@@ -718,23 +731,28 @@
                             triggerScreenShake(300, 6);
                             for(let i=0; i<35; i++) flowerParticles.push(new FlowerParticle(400, 250));
                         } else {
-                            // High Hazard Encounter Chance on Non-Winning Spins
                             if (Math.random() < 0.7) {
-                                let hazards = ['jaguar', 'vine'];
-                                let chosen = hazards[Math.floor(Math.random() * hazards.length)];
+                                let hazardTypes = ['jaguar', 'venomvine', 'quicksand', 'templecurse'];
+                                let chosenType = hazardTypes[Math.floor(Math.random() * hazardTypes.length)];
                                 let targetReel = Math.floor(Math.random() * 3);
                                 let symbolSize = 80;
                                 let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
                                 let hazardX = reelStartX + targetReel * 125 + 40;
                                 let hazardY = 185;
 
-                                activeHazard = { type: chosen, reelIndex: targetReel, x: hazardX, y: hazardY };
+                                let penaltyPct = chosenType === 'jaguar' ? 0.01 : chosenType === 'venomvine' ? 0.05 : chosenType === 'quicksand' ? 0.10 : 0.15;
+
+                                activeHazard = { 
+                                    type: chosenType, 
+                                    reelIndex: targetReel, 
+                                    x: hazardX, 
+                                    y: hazardY, 
+                                    penaltyPct: penaltyPct,
+                                    startTime: Date.now() 
+                                };
                                 hazardActive = true;
 
-                                let pct = chosen === 'jaguar' ? 0.01 : 0.05;
-                                let penalty = Math.max(500, Math.floor(balance * pct));
-                                balance = Math.max(0, balance - penalty);
-                                bannerText = `${chosen.toUpperCase()} ON REEL ${targetReel+1}! AIM & FIRE!`;
+                                bannerText = `${chosenType.toUpperCase()} ON REEL ${targetReel+1}! AIM & FIRE!`;
                                 bannerAlpha = 3.5;
                                 triggerScreenShake(400, 8);
                             }
