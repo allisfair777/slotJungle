@@ -59,7 +59,6 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        // Web Audio Context for synthesized sound fallbacks
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
 
@@ -92,7 +91,6 @@
         const speakerImg = new Image(); speakerImg.src = "speaker.png";
         const muteImg = new Image(); muteImg.src = "mute.png";
         
-        // Custom Controls & Hazard Assets
         const slingshotImg = new Image(); slingshotImg.src = "slingshot.png";
         const vineImg = new Image(); vineImg.src = "leftvine.png";
 
@@ -124,11 +122,11 @@
         let currentBet = betSteps[betIndex];
         let isBetAllActive = false;
         
-        // Muted by default with balanced low volume (0.2)
+        // Muted by default with identical very low volume (0.15)
         let musicMuted = true;
-        let musicVolume = 0.2;
+        let musicVolume = 0.15;
         let soundsMuted = true;
-        let soundsVolume = 0.2;
+        let soundsVolume = 0.15;
 
         const soundtracks = [document.getElementById("track0"), document.getElementById("track1")];
         const trackNames = ["Jungle Beats Vol. 1", "Rainforest Rhythms"];
@@ -149,11 +147,10 @@
         let screenShakeTimer = 0;
         let screenShakeIntensity = 0;
 
-        // Hazard & Aiming State (0 = Left, 1 = Center, 2 = Right)
-        let activeHazard = null; // { type, name, reelIndex, x, y, penaltyPct, startTime }
+        let activeHazard = null; // { type, reelIndex, penaltyPct, startTime, rewardBonus }
         let hazardActive = false;
         let currentAimReel = 1;
-        let stoneProjectile = null; // { startX, startY, targetX, targetY, progress, trail: [] }
+        let stoneProjectile = null;
 
         let stars = [];
         for (let i = 0; i < 40; i++) {
@@ -171,7 +168,6 @@
         const spinPlankRect = { x: 550, y: 455, w: 225, h: 65 };
         const restartWheelRect = { x: 25, y: 455, w: 65, h: 65 };
         
-        // Top Right Control Rack Aligned right with Spin Temple edge
         const musicMuteRect = { x: 550, y: 15, w: 32, h: 32 };
         const musicSliderRect = { x: 590, y: 23, w: 75, h: 16 };
         const playlistDropdownRect = { x: 550, y: 55, w: 115, h: 30 };
@@ -180,7 +176,6 @@
         const soundsSliderRect = { x: 725, y: 23, w: 50, h: 16 };
         const timeToggleRect = { x: 685, y: 55, w: 90, h: 30 };
 
-        // Perfectly Centered Control Cluster in Bottom Gap (Slingshot centered at x: 380)
         const leftVineBtnRect = { x: 325, y: 455, w: 45, h: 65 };
         const slingshotBtnRect = { x: 380, y: 455, w: 45, h: 65 };
         const rightVineBtnRect = { x: 435, y: 455, w: 45, h: 65 };
@@ -222,7 +217,6 @@
             screenShakeIntensity = intensity;
         }
 
-        // Transparent Image Renderer (Removes white and sky-blue backgrounds)
         function drawTransparentImage(img, x, y, w, h, flipH = false) {
             if (!img.complete || img.naturalWidth === 0) return;
             const tempCanvas = document.createElement('canvas');
@@ -355,13 +349,15 @@
         }
 
         function drawHazardAndDefenseGraphics() {
-            // Hazard Timeout Check (Extended to 15 Seconds for 2-3 Aiming Chances)
+            let symbolSize = 80;
+            let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
+
+            // Hazard Timeout Check (25 Seconds Slower Pacing)
             if (hazardActive && activeHazard) {
-                let hazardDurationMs = 15000;
+                let hazardDurationMs = 25000;
                 let elapsed = Date.now() - activeHazard.startTime;
                 let timeLeft = Math.max(0, hazardDurationMs - elapsed);
                 if (timeLeft === 0) {
-                    // Timeout Penalty
                     let penalty = Math.max(500, Math.floor(balance * activeHazard.penaltyPct));
                     balance = Math.max(0, balance - penalty);
                     bannerText = `TIME OUT! -$${penalty.toLocaleString()} PENALTY`;
@@ -370,27 +366,25 @@
                     activeHazard = null;
                 } else {
                     ctx.save();
-                    let hx = activeHazard.x;
-                    let hy = activeHazard.y;
+                    // Accurately position over the specific reel where hazard spawned
+                    let hx = reelStartX + activeHazard.reelIndex * 125 + 40;
+                    let hy = 240;
 
-                    // Render Custom Hazard Image with Transparent Background
                     let hImg = hazardImages[activeHazard.type];
                     if (hImg) {
-                        drawTransparentImage(hImg, hx - 30, hy - 30, 60, 60, false);
+                        drawTransparentImage(hImg, hx - 35, hy - 35, 70, 70, false);
                     }
 
                     // Render Countdown Timer Bar above hazard
                     ctx.fillStyle = "#333";
-                    ctx.fillRect(hx - 25, hy - 40, 50, 6);
-                    ctx.fillStyle = timeLeft < 3000 ? "#ff3333" : "#4dff4d";
-                    ctx.fillRect(hx - 25, hy - 40, 50 * (timeLeft / hazardDurationMs), 6);
+                    ctx.fillRect(hx - 25, hy - 50, 50, 6);
+                    ctx.fillStyle = timeLeft < 4000 ? "#ff3333" : "#4dff4d";
+                    ctx.fillRect(hx - 25, hy - 50, 50 * (timeLeft / hazardDurationMs), 6);
                     ctx.restore();
                 }
             }
 
-            // Brown Aim Arc Indicator above current aim reel
-            let symbolSize = 80;
-            let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
+            // Brown Aim Arc Indicator positioned strictly over current aim reel
             let aimX = reelStartX + currentAimReel * 125 + 40;
             ctx.save();
             ctx.strokeStyle = "#8b4513";
@@ -430,8 +424,7 @@
 
                 if (stoneProjectile.progress >= 1.0) {
                     if (activeHazard && activeHazard.reelIndex === currentAimReel) {
-                        // HIT TARGET: Bonus Money & Flower Celebration Drop
-                        let bonus = 5000 * (betIndex + 1);
+                        let bonus = activeHazard.rewardBonus;
                         balance += bonus;
                         bannerText = `DIRECT HIT! BONUS +$${bonus.toLocaleString()}!`;
                         bannerAlpha = 3.0;
@@ -451,7 +444,7 @@
                 }
             }
 
-            // Render Slingshot & Vine Controls (No Text Labels)
+            // Render Slingshot & Vine Controls
             ctx.save();
             ctx.globalAlpha = (currentAimReel === 0) ? 0.4 : 1.0;
             drawTransparentImage(vineImg, leftVineBtnRect.x, leftVineBtnRect.y, leftVineBtnRect.w, leftVineBtnRect.h, false);
@@ -480,16 +473,16 @@
             let rowY = [payoutOvalRect.y + 42, payoutOvalRect.y + 66, payoutOvalRect.y + 90, payoutOvalRect.y + 114];
 
             ctx.drawImage(shibaImg, payoutOvalRect.x + 20, rowY[0] - 10, 20, 20);
-            drawOutlinedText(`$${(currentBet*50).toLocaleString()}`, payoutOvalRect.x + 85, rowY[0], "11px Arial bold", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("$100,000", payoutOvalRect.x + 85, rowY[0], "11px Arial bold", WHITE, DARK_BROWN, "left");
 
-            ctx.drawImage(monkeyImg, payoutOvalRect.x + 20, rowY[1] - 10, 20, 20);
-            drawOutlinedText(`$${(currentBet*25).toLocaleString()}`, payoutOvalRect.x + 85, rowY[1], "11px Arial bold", WHITE, DARK_BROWN, "left");
+            ctx.drawImage(jungleImg, payoutOvalRect.x + 20, rowY[1] - 10, 20, 20);
+            drawOutlinedText("$75,000", payoutOvalRect.x + 85, rowY[1], "11px Arial bold", WHITE, DARK_BROWN, "left");
 
-            ctx.drawImage(tigerImg, payoutOvalRect.x + 20, rowY[2] - 10, 20, 20);
-            drawOutlinedText(`$${(currentBet*15).toLocaleString()}`, payoutOvalRect.x + 85, rowY[2], "11px Arial bold", WHITE, DARK_BROWN, "left");
+            ctx.drawImage(monkeyImg, payoutOvalRect.x + 20, rowY[2] - 10, 20, 20);
+            drawOutlinedText("$50,000", payoutOvalRect.x + 85, rowY[2], "11px Arial bold", WHITE, DARK_BROWN, "left");
 
-            ctx.drawImage(parrotImg, payoutOvalRect.x + 20, rowY[3] - 10, 20, 20);
-            drawOutlinedText(`$${(currentBet*10).toLocaleString()}`, payoutOvalRect.x + 85, rowY[3], "11px Arial bold", WHITE, DARK_BROWN, "left");
+            ctx.drawImage(tigerImg, payoutOvalRect.x + 20, rowY[3] - 10, 20, 20);
+            drawOutlinedText("$25,000", payoutOvalRect.x + 85, rowY[3], "11px Arial bold", WHITE, DARK_BROWN, "left");
 
             let hazX = payoutOvalRect.x + 203;
             drawOutlinedText("Jaguar Trap", hazX + 25, rowY[0], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
@@ -572,7 +565,6 @@
             const x = (e.clientX - rect.left) * (canvas.width / rect.width);
             const y = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-            // Playlist Dropdown Menu Interaction
             if (x >= playlistDropdownRect.x && x <= playlistDropdownRect.x + playlistDropdownRect.w && y >= playlistDropdownRect.y && y <= playlistDropdownRect.y + playlistDropdownRect.h) {
                 playlistDropdownOpen = !playlistDropdownOpen;
                 playSound(clickSound);
@@ -598,14 +590,12 @@
                 }
             }
 
-            // Time Mode Toggle
             if (x >= timeToggleRect.x && x <= timeToggleRect.x + timeToggleRect.w && y >= timeToggleRect.y && y <= timeToggleRect.y + timeToggleRect.h) {
                 timeModeIndex = (timeModeIndex + 1) % timeModes.length;
                 playSound(clickSound);
                 return;
             }
 
-            // Independent Music Mute Button
             if (x >= musicMuteRect.x && x <= musicMuteRect.x + musicMuteRect.w && y >= musicMuteRect.y && y <= musicMuteRect.y + musicMuteRect.h) {
                 musicMuted = !musicMuted;
                 if (!musicMuted && !musicPlaying) {
@@ -617,14 +607,12 @@
                 return;
             }
 
-            // Independent Music Volume Slider
             if (x >= musicSliderRect.x && x <= musicSliderRect.x + musicSliderRect.w && y >= musicSliderRect.y && y <= musicSliderRect.y + musicSliderRect.h) {
                 musicVolume = Math.max(0, Math.min(1, (x - musicSliderRect.x) / musicSliderRect.w));
                 updateAudioVolumes();
                 return;
             }
 
-            // Independent Sounds Mute Button
             if (x >= soundsMuteRect.x && x <= soundsMuteRect.x + soundsMuteRect.w && y >= soundsMuteRect.y && y <= soundsMuteRect.y + soundsMuteRect.h) {
                 soundsMuted = !soundsMuted;
                 updateAudioVolumes();
@@ -632,14 +620,12 @@
                 return;
             }
 
-            // Independent Sounds Volume Slider
             if (x >= soundsSliderRect.x && x <= soundsSliderRect.x + soundsSliderRect.w && y >= soundsSliderRect.y && y <= soundsSliderRect.y + soundsSliderRect.h) {
                 soundsVolume = Math.max(0, Math.min(1, (x - soundsSliderRect.x) / soundsSliderRect.w));
                 updateAudioVolumes();
                 return;
             }
 
-            // Aiming Controls
             if (x >= leftVineBtnRect.x && x <= leftVineBtnRect.x + leftVineBtnRect.w && y >= leftVineBtnRect.y && y <= leftVineBtnRect.y + leftVineBtnRect.h) {
                 if (currentAimReel > 0) currentAimReel--;
                 playSound(clickSound);
@@ -651,7 +637,6 @@
                 return;
             }
 
-            // Slingshot Fire Button
             if (x >= slingshotBtnRect.x && x <= slingshotBtnRect.x + slingshotBtnRect.w && y >= slingshotBtnRect.y && y <= slingshotBtnRect.y + slingshotBtnRect.h) {
                 playSound(clickSound);
                 let symbolSize = 80;
@@ -669,7 +654,6 @@
                 return;
             }
 
-            // Bet Slider Click
             let nodes = getBetArcNodes();
             if (Math.hypot(x - nodes[4].x, y - nodes[4].y) <= 22) {
                 isBetAllActive = !isBetAllActive;
@@ -693,7 +677,6 @@
                 return;
             }
 
-            // SPIN TEMPLE Button
             if (!spinning && !isGameOver && x >= spinPlankRect.x && x <= spinPlankRect.x + spinPlankRect.w && y >= spinPlankRect.y && y <= spinPlankRect.y + spinPlankRect.h) {
                 if (balance < currentBet) return;
                 balance -= currentBet;
@@ -717,9 +700,11 @@
 
                         let payout = 0;
                         if (reels[0] === reels[1] && reels[1] === reels[2]) {
-                            payout = currentBet * 50;
-                        } else if (reels[0] === reels[1] || reels[1] === reels[2]) {
-                            payout = currentBet * 15;
+                            if (reels[0] === "Shiba") payout = 100000;
+                            else if (reels[0] === "Jungle") payout = 75000;
+                            else payout = 50000;
+                        } else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) {
+                            payout = 25000;
                         }
 
                         if (payout > 0) {
@@ -734,19 +719,15 @@
                                 let hazardTypes = ['jaguar', 'venomvine', 'quicksand', 'templecurse'];
                                 let chosenType = hazardTypes[Math.floor(Math.random() * hazardTypes.length)];
                                 let targetReel = Math.floor(Math.random() * 3);
-                                let symbolSize = 80;
-                                let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
-                                let hazardX = reelStartX + targetReel * 125 + 40;
-                                let hazardY = 185;
 
                                 let penaltyPct = chosenType === 'jaguar' ? 0.01 : chosenType === 'venomvine' ? 0.05 : chosenType === 'quicksand' ? 0.10 : 0.15;
+                                let rewardBonus = chosenType === 'jaguar' ? 15000 : chosenType === 'venomvine' ? 25000 : chosenType === 'quicksand' ? 35000 : 50000;
 
                                 activeHazard = { 
                                     type: chosenType, 
                                     reelIndex: targetReel, 
-                                    x: hazardX, 
-                                    y: hazardY, 
                                     penaltyPct: penaltyPct,
+                                    rewardBonus: rewardBonus,
                                     startTime: Date.now() 
                                 };
                                 hazardActive = true;
@@ -778,7 +759,6 @@
                 return;
             }
 
-            // RESTART Button
             if (x >= restartWheelRect.x && x <= restartWheelRect.x + restartWheelRect.w && y >= restartWheelRect.y && y <= restartWheelRect.y + restartWheelRect.h) {
                 balance = 100000;
                 isGameOver = false;
@@ -815,16 +795,12 @@
 
             drawEnvironmentOverlay();
 
-            // Casino Logo Top Left
             ctx.drawImage(shibaImg, logoRect.x, logoRect.y, logoRect.w, logoRect.h);
 
-            // Scoreboards Header
             drawOutlinedText(`Highest Loot  $${highscore.toLocaleString()}`, 95, 28, "18px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
             drawOutlinedText(`Treasure Hunt $${balance.toLocaleString()}`, 95, 55, "20px Arial bold", WHITE, DARK_BROWN, "left");
 
-            // --- CONTROL RACK ALIGNED WITH SPIN TEMPLE ---
-            
-            // Column 1: Music & Playlist
+            // --- CONTROL RACK ---
             ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.roundRect(musicMuteRect.x, musicMuteRect.y, musicMuteRect.w, musicMuteRect.h, 8); ctx.fill(); ctx.stroke();
             ctx.drawImage(musicMuted ? muteImg : speakerImg, musicMuteRect.x + 4, musicMuteRect.y + 4, 24, 24);
@@ -844,7 +820,6 @@
                 });
             }
 
-            // Column 2: Sounds & Day/Night
             ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.roundRect(soundsMuteRect.x, soundsMuteRect.y, soundsMuteRect.w, soundsMuteRect.h, 8); ctx.fill(); ctx.stroke();
             ctx.drawImage(soundsMuted ? muteImg : speakerImg, soundsMuteRect.x + 4, soundsMuteRect.y + 4, 24, 24);
@@ -854,12 +829,9 @@
 
             drawWoodenButton(timeToggleRect, timeModes[timeModeIndex]);
 
-            // --- END CONTROL RACK ---
-
-            // Hazard Threat & Aiming / Slingshot Projectile Graphics
             drawHazardAndDefenseGraphics();
 
-            // Reels Matrix Display
+            // Reels Matrix Display (Payline Removed)
             const symbolSize = 80;
             const reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
             for (let i = 0; i < 3; i++) {
@@ -877,15 +849,6 @@
                 }
             }
 
-            // Payline Indicator
-            ctx.strokeStyle = "#ff3333";
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(reelStartX - 15, 240);
-            ctx.lineTo(reelStartX + 3 * symbolSize + 2 * 45 + 15, 240);
-            ctx.stroke();
-
-            // Banner Notification Text
             if (bannerAlpha > 0) {
                 ctx.save();
                 ctx.globalAlpha = Math.min(1.0, bannerAlpha);
@@ -897,11 +860,9 @@
             drawPayoutOval();
             drawBetSliderOval();
 
-            // Bottom Controls
             drawWoodenButton(spinPlankRect, isGameOver ? "GAME OVER" : "SPIN TEMPLE");
             drawWoodenButton(restartWheelRect, "Restart", true);
 
-            // Update Flower Particles
             flowerParticles.forEach((fp, idx) => {
                 fp.update(dt);
                 fp.draw();
