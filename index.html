@@ -89,8 +89,11 @@
         let currentBet = betSteps[betIndex];
         let isBetAllActive = false;
         
-        let isMuted = true;
-        let masterVolume = 0.3;
+        // Independent Audio Control System
+        let musicMuted = true;
+        let musicVolume = 0.3;
+        let sfxMuted = false;
+        let sfxVolume = 0.5;
 
         // Music Playlist & Dropdown State
         const soundtracks = [document.getElementById("track0"), document.getElementById("track1")];
@@ -112,8 +115,10 @@
         let screenShakeTimer = 0;
         let screenShakeIntensity = 0;
 
-        let activeHazard = null;
+        // Hazard & Stone Projectile State
+        let activeHazard = null; // { type: 'jaguar' | 'vine', x: 400, y: 165 }
         let hazardActive = false;
+        let stoneProjectile = null; // { x, y, targetX, targetY, progress }
 
         // Environment visuals
         let stars = [];
@@ -125,42 +130,44 @@
             fireflies.push({ x: Math.random() * 800, y: Math.random() * 400 + 150, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, alpha: Math.random() });
         }
 
-        // Layout Rectangles (Cleaned up spacing to prevent score overlapping)
+        // Layout Rectangles (Clean Spacing)
         const logoRect = { x: 25, y: 15, w: 55, h: 55 };
         const payoutOvalRect = { x: 25, y: 295, w: 365, h: 140 };
         const betSliderOvalRect = { x: 410, y: 295, w: 365, h: 140 };
         const spinPlankRect = { x: 550, y: 455, w: 225, h: 65 };
         const restartWheelRect = { x: 25, y: 455, w: 65, h: 65 };
         
-        // Top Right Controls
-        const muteButtonRect = { x: 630, y: 20, w: 45, h: 45 };
-        const volumeSliderRect = { x: 685, y: 32, w: 90, h: 20 };
-        const timeToggleRect = { x: 630, y: 70, w: 145, h: 35 };
-        
-        // Playlist Dropdown moved safely below time toggle (no more score stomping!)
-        const playlistDropdownRect = { x: 630, y: 115, w: 145, h: 35 };
+        // Independent Controls (Top Right)
+        const musicMuteRect = { x: 550, y: 18, w: 35, h: 35 };
+        const musicSliderRect = { x: 595, y: 28, w: 80, h: 16 };
+        const sfxMuteRect = { x: 690, y: 18, w: 35, h: 35 };
+        const sfxSliderRect = { x: 735, y: 28, w: 55, h: 16 };
 
-        // Defense Controls (Slingshot & Vines placed near Spin / Bottom Right like Slot Pirates cannon)
-        const slingshotBaseRect = { x: 430, y: 455, w: 110, h: 65 };
-        const leftVineRect = { x: 365, y: 455, w: 55, h: 65 };
+        const timeToggleRect = { x: 630, y: 65, w: 160, h: 32 };
+        const playlistDropdownRect = { x: 630, y: 105, w: 160, h: 32 };
+
+        // Tactical Defense Controls (Slot Pirates Style Cannons & Swords)
+        const leftSwordRect = { x: 330, y: 455, w: 55, h: 65 };
+        const rightSwordRect = { x: 395, y: 455, w: 55, h: 65 };
+        const slingshotCannonRect = { x: 460, y: 455, w: 80, h: 65 };
 
         function updateAudioVolumes() {
             soundtracks.forEach((track, idx) => {
-                if (track) track.volume = (isMuted || idx !== currentTrackIndex || !musicPlaying) ? 0 : masterVolume;
+                if (track) track.volume = (musicMuted || idx !== currentTrackIndex || !musicPlaying) ? 0 : musicVolume;
             });
             let rainforest = document.getElementById("rainforestSound");
-            if (rainforest) rainforest.volume = isMuted ? 0 : masterVolume * 0.5;
+            if (rainforest) rainforest.volume = musicMuted ? 0 : musicVolume * 0.5;
 
             let sfxList = [document.getElementById("spinSound"), document.getElementById("winSound"), document.getElementById("clickSound")];
             sfxList.forEach(sfx => {
-                if (sfx) sfx.volume = isMuted ? 0 : masterVolume;
+                if (sfx) sfx.volume = sfxMuted ? 0 : sfxVolume;
             });
         }
 
         function playSound(soundObj) {
-            if (!isMuted && soundObj && soundObj.src) {
+            if (!sfxMuted && soundObj && soundObj.src) {
                 soundObj.currentTime = 0;
-                soundObj.volume = masterVolume;
+                soundObj.volume = sfxVolume;
                 soundObj.play().catch(e => {});
             }
         }
@@ -214,7 +221,7 @@
             ctx.font = font;
             ctx.textAlign = align;
             ctx.textBaseline = "middle";
-            ctx.lineWidth = 5;
+            ctx.lineWidth = 4;
             ctx.strokeStyle = outlineColor;
             ctx.strokeText(text, x, y);
             ctx.fillStyle = fillColor;
@@ -274,13 +281,13 @@
             if (!hazardActive || !activeHazard) return;
             ctx.save();
 
-            let cx = 400, cy = 165;
+            let cx = activeHazard.x, cy = activeHazard.y;
             if (activeHazard.type === 'jaguar') {
                 ctx.fillStyle = "#ffcc00";
                 ctx.shadowColor = "#ff3300";
                 ctx.shadowBlur = 15;
-                ctx.beginPath(); ctx.arc(cx - 35, cy, 10, 0, Math.PI * 2); ctx.fill();
-                ctx.beginPath(); ctx.arc(cx + 35, cy, 10, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cx - 35, cy, 12, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(cx + 35, cy, 12, 0, Math.PI * 2); ctx.fill();
                 drawOutlinedText("⚠️ ROGUE JAGUAR ATTACK!", cx, cy - 25, "16px Arial bold", "#ff4d4d");
             } else if (activeHazard.type === 'vine') {
                 ctx.strokeStyle = "#4dff4d";
@@ -291,19 +298,46 @@
                 drawOutlinedText("⚠️ VENOM VINE WRAP!", cx, cy - 25, "16px Arial bold", "#4dff4d");
             }
 
-            // Defend Controls (Slingshot & Vines where Cannon was)
+            // Render Stone Projectile if flying
+            if (stoneProjectile) {
+                stoneProjectile.progress += 0.05;
+                let curX = stoneProjectile.startX + (stoneProjectile.targetX - stoneProjectile.startX) * stoneProjectile.progress;
+                let curY = stoneProjectile.startY + (stoneProjectile.targetY - stoneProjectile.startY) * stoneProjectile.progress - Math.sin(stoneProjectile.progress * Math.PI) * 50;
+                
+                ctx.fillStyle = "#cccccc";
+                ctx.strokeStyle = "#333333";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(curX, curY, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                if (stoneProjectile.progress >= 1.0) {
+                    stoneProjectile = null;
+                    hazardActive = false;
+                    activeHazard = null;
+                    bannerText = "DEFENDED! HAZARD DESTROYED!";
+                    bannerAlpha = 2.0;
+                }
+            }
+
+            // Tactical Defense Controls (Swords & Cannon)
             ctx.fillStyle = "#2d6a4f";
             ctx.strokeStyle = SOFT_GOLD;
             ctx.lineWidth = 2;
             
-            // Left Vine
-            ctx.beginPath(); ctx.roundRect(leftVineRect.x, leftVineRect.y, leftVineRect.w, leftVineRect.h, 12); ctx.fill(); ctx.stroke();
-            drawOutlinedText("VINE", leftVineRect.x + 27, leftVineRect.y + 32, "12px Arial bold", SOFT_GOLD);
+            // Left Sword
+            ctx.beginPath(); ctx.roundRect(leftSwordRect.x, leftSwordRect.y, leftSwordRect.w, leftSwordRect.h, 12); ctx.fill(); ctx.stroke();
+            drawOutlinedText("⚔️ L-SWORD", leftSwordRect.x + 27, leftSwordRect.y + 32, "11px Arial bold", SOFT_GOLD);
 
-            // Slingshot Turret
+            // Right Sword
+            ctx.beginPath(); ctx.roundRect(rightSwordRect.x, rightSwordRect.y, rightSwordRect.w, rightSwordRect.h, 12); ctx.fill(); ctx.stroke();
+            drawOutlinedText("⚔️ R-SWORD", rightSwordRect.x + 27, rightSwordRect.y + 32, "11px Arial bold", SOFT_GOLD);
+
+            // Cannon / Slingshot Turret
             ctx.fillStyle = "#8b4513";
-            ctx.beginPath(); ctx.roundRect(slingshotBaseRect.x, slingshotBaseRect.y, slingshotBaseRect.w, slingshotBaseRect.h, 12); ctx.fill(); ctx.stroke();
-            drawOutlinedText("🎯 SLINGSHOT", slingshotBaseRect.x + 55, slingshotBaseRect.y + 32, "13px Arial bold", SOFT_GOLD);
+            ctx.beginPath(); ctx.roundRect(slingshotCannonRect.x, slingshotCannonRect.y, slingshotCannonRect.w, slingshotCannonRect.h, 12); ctx.fill(); ctx.stroke();
+            drawOutlinedText("💣 CANNON", slingshotCannonRect.x + 40, slingshotCannonRect.y + 32, "12px Arial bold", SOFT_GOLD);
 
             ctx.restore();
         }
@@ -406,7 +440,7 @@
                 ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 15);
                 ctx.fill();
                 ctx.stroke();
-                drawOutlinedText(text, rect.x + rect.w / 2, rect.y + rect.h / 2, "18px Arial bold", SOFT_GOLD);
+                drawOutlinedText(text, rect.x + rect.w / 2, rect.y + rect.h / 2, "16px Arial bold", SOFT_GOLD);
             }
             ctx.restore();
         }
@@ -424,8 +458,8 @@
             }
 
             if (playlistDropdownOpen) {
-                if (x >= playlistDropdownRect.x && x <= playlistDropdownRect.x + playlistDropdownRect.w && y >= playlistDropdownRect.y + 40 && y <= playlistDropdownRect.y + 40 + (trackNames.length * 35)) {
-                    let clickedIdx = Math.floor((y - (playlistDropdownRect.y + 40)) / 35);
+                if (x >= playlistDropdownRect.x && x <= playlistDropdownRect.x + playlistDropdownRect.w && y >= playlistDropdownRect.y + 35 && y <= playlistDropdownRect.y + 35 + (trackNames.length * 35)) {
+                    let clickedIdx = Math.floor((y - (playlistDropdownRect.y + 35)) / 35);
                     if (clickedIdx >= 0 && clickedIdx < soundtracks.length) {
                         soundtracks.forEach(t => { if(t) t.pause(); });
                         currentTrackIndex = clickedIdx;
@@ -449,31 +483,55 @@
                 return;
             }
 
-            // Mute Button
-            if (x >= muteButtonRect.x && x <= muteButtonRect.x + muteButtonRect.w && y >= muteButtonRect.y && y <= muteButtonRect.y + muteButtonRect.h) {
-                isMuted = !isMuted;
+            // Independent Music Mute Button
+            if (x >= musicMuteRect.x && x <= musicMuteRect.x + musicMuteRect.w && y >= musicMuteRect.y && y <= musicMuteRect.y + musicMuteRect.h) {
+                musicMuted = !musicMuted;
+                if (!musicMuted && !musicPlaying) {
+                    musicPlaying = true;
+                    soundtracks[currentTrackIndex].play().catch(e=>{});
+                }
                 updateAudioVolumes();
                 playSound(clickSound);
                 return;
             }
 
-            // Volume Slider
-            if (x >= volumeSliderRect.x && x <= volumeSliderRect.x + volumeSliderRect.w && y >= volumeSliderRect.y && y <= volumeSliderRect.y + volumeSliderRect.h) {
-                masterVolume = Math.max(0, Math.min(1, (x - volumeSliderRect.x) / volumeSliderRect.w));
+            // Independent Music Volume Slider
+            if (x >= musicSliderRect.x && x <= musicSliderRect.x + musicSliderRect.w && y >= musicSliderRect.y && y <= musicSliderRect.y + musicSliderRect.h) {
+                musicVolume = Math.max(0, Math.min(1, (x - musicSliderRect.x) / musicSliderRect.w));
+                updateAudioVolumes();
+                return;
+            }
+
+            // Independent SFX Mute Button
+            if (x >= sfxMuteRect.x && x <= sfxMuteRect.x + sfxMuteRect.w && y >= sfxMuteRect.y && y <= sfxMuteRect.y + sfxMuteRect.h) {
+                sfxMuted = !sfxMuted;
                 updateAudioVolumes();
                 playSound(clickSound);
                 return;
             }
 
-            // Hazard Defense (Vines / Slingshot Click)
-            if (hazardActive) {
-                if ((x >= leftVineRect.x && x <= leftVineRect.x + leftVineRect.w && y >= leftVineRect.y && y <= leftVineRect.y + leftVineRect.h) ||
-                    (x >= slingshotBaseRect.x && x <= slingshotBaseRect.x + slingshotBaseRect.w && y >= slingshotBaseRect.y && y <= slingshotBaseRect.y + slingshotBaseRect.h)) {
+            // Independent SFX Volume Slider
+            if (x >= sfxSliderRect.x && x <= sfxSliderRect.x + sfxSliderRect.w && y >= sfxSliderRect.y && y <= sfxSliderRect.y + sfxSliderRect.h) {
+                sfxVolume = Math.max(0, Math.min(1, (x - sfxSliderRect.x) / sfxSliderRect.w));
+                updateAudioVolumes();
+                playSound(clickSound);
+                return;
+            }
+
+            // Hazard Defense Click (Fires Stone Projectile towards Hazard)
+            if (hazardActive && activeHazard) {
+                if ((x >= leftSwordRect.x && x <= leftSwordRect.x + leftSwordRect.w && y >= leftSwordRect.y && y <= leftSwordRect.y + leftSwordRect.h) ||
+                    (x >= rightSwordRect.x && x <= rightSwordRect.x + rightSwordRect.w && y >= rightSwordRect.y && y <= rightSwordRect.y + rightSwordRect.h) ||
+                    (x >= slingshotCannonRect.x && x <= slingshotCannonRect.x + slingshotCannonRect.w && y >= slingshotCannonRect.y && y <= slingshotCannonRect.y + slingshotCannonRect.h)) {
+                    
                     playSound(clickSound);
-                    bannerText = "DEFENDED! HAZARD AVOIDED!";
-                    bannerAlpha = 2.0;
-                    hazardActive = false;
-                    activeHazard = null;
+                    stoneProjectile = {
+                        startX: slingshotCannonRect.x + 40,
+                        startY: slingshotCannonRect.y,
+                        targetX: activeHazard.x,
+                        targetY: activeHazard.y,
+                        progress: 0
+                    };
                     return;
                 }
             }
@@ -509,6 +567,7 @@
                 spinning = true;
                 hazardActive = false;
                 activeHazard = null;
+                stoneProjectile = null;
                 playSound(spinSound);
 
                 let timer = 0;
@@ -538,17 +597,18 @@
                             triggerScreenShake(300, 6);
                             for(let i=0; i<35; i++) flowerParticles.push(new FlowerParticle(400, 250));
                         } else {
-                            if (Math.random() < 0.35) {
-                                let hazards = ['jaguar', 'vine', 'quicksand', 'curse'];
+                            // GUARANTEED HAZARD CHANCE FOR TESTING & PLAYABILITY
+                            if (Math.random() < 0.5) {
+                                let hazards = ['jaguar', 'vine'];
                                 let chosen = hazards[Math.floor(Math.random() * hazards.length)];
-                                activeHazard = { type: chosen };
+                                activeHazard = { type: chosen, x: 400, y: 165 };
                                 hazardActive = true;
 
-                                let pct = chosen === 'jaguar' ? 0.01 : (chosen === 'vine' ? 0.05 : (chosen === 'quicksand' ? 0.10 : 0.15));
+                                let pct = chosen === 'jaguar' ? 0.01 : 0.05;
                                 let penalty = Math.max(500, Math.floor(balance * pct));
                                 balance = Math.max(0, balance - penalty);
                                 bannerText = `${chosen.toUpperCase()} ATTACK! DEFEND NOW!`;
-                                bannerAlpha = 3.0;
+                                bannerAlpha = 3.5;
                                 triggerScreenShake(400, 8);
                             }
                         }
@@ -583,6 +643,7 @@
                 isBetAllActive = false;
                 hazardActive = false;
                 activeHazard = null;
+                stoneProjectile = null;
                 playSound(clickSound);
                 return;
             }
@@ -613,59 +674,42 @@
             // Casino Logo Top Left
             ctx.drawImage(shibaImg, logoRect.x, logoRect.y, logoRect.w, logoRect.h);
 
-            // Scoreboards Header (Safely below logo, completely clear of playlist dropdown)
+            // Scoreboards Header (Clear of top controls)
             drawOutlinedText(`Highest Loot  $${highscore.toLocaleString()}`, 95, 28, "18px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
             drawOutlinedText(`Treasure Hunt $${balance.toLocaleString()}`, 95, 55, "20px Arial bold", WHITE, DARK_BROWN, "left");
 
-            // Playlist Dropdown Menu Button (Safely positioned on right below time toggle)
-            ctx.fillStyle = "#8b4513";
-            ctx.strokeStyle = DARK_BROWN;
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y, playlistDropdownRect.w, playlistDropdownRect.h, 12);
-            ctx.fill();
-            ctx.stroke();
-            drawOutlinedText(`🎵 ${trackNames[currentTrackIndex]} ▾`, playlistDropdownRect.x + 72, playlistDropdownRect.y + 18, "12px Arial bold", SOFT_GOLD);
+            // Independent Music Controls (Mute & Slider)
+            ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(musicMuteRect.x, musicMuteRect.y, musicMuteRect.w, musicMuteRect.h, 8); ctx.fill(); ctx.stroke();
+            ctx.drawImage(musicMuted ? muteImg : speakerImg, musicMuteRect.x + 5, musicMuteRect.y + 5, 25, 25);
+            ctx.fillStyle = "#1a0a00"; ctx.fillRect(musicSliderRect.x, musicSliderRect.y + 6, musicSliderRect.w, 4);
+            ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(musicSliderRect.x + (musicVolume * musicSliderRect.w), musicSliderRect.y + 8, 6, 0, Math.PI * 2); ctx.fill();
+            drawOutlinedText("MUSIC", musicMuteRect.x + 35, musicMuteRect.y - 8, "9px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
 
-            // Render Dropdown List if Open
+            // Independent SFX Controls (Mute & Slider)
+            ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(sfxMuteRect.x, sfxMuteRect.y, sfxMuteRect.w, sfxMuteRect.h, 8); ctx.fill(); ctx.stroke();
+            ctx.drawImage(sfxMuted ? muteImg : speakerImg, sfxMuteRect.x + 5, sfxMuteRect.y + 5, 25, 25);
+            ctx.fillStyle = "#1a0a00"; ctx.fillRect(sfxSliderRect.x, sfxSliderRect.y + 6, sfxSliderRect.w, 4);
+            ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(sfxSliderRect.x + (sfxVolume * sfxSliderRect.w), sfxSliderRect.y + 8, 6, 0, Math.PI * 2); ctx.fill();
+            drawOutlinedText("SFX", sfxMuteRect.x + 35, sfxMuteRect.y - 8, "9px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
+
+            // Time Mode Toggle & Playlist Dropdown
+            drawWoodenButton(timeToggleRect, timeModes[timeModeIndex]);
+
+            ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y, playlistDropdownRect.w, playlistDropdownRect.h, 12); ctx.fill(); ctx.stroke();
+            drawOutlinedText(`🎵 ${trackNames[currentTrackIndex]} ▾`, playlistDropdownRect.x + 80, playlistDropdownRect.y + 16, "11px Arial bold", SOFT_GOLD);
+
             if (playlistDropdownOpen) {
-                ctx.fillStyle = "#1a0a00";
-                ctx.strokeStyle = SOFT_GOLD;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y + 40, playlistDropdownRect.w, trackNames.length * 35, 10);
-                ctx.fill();
-                ctx.stroke();
+                ctx.fillStyle = "#1a0a00"; ctx.strokeStyle = SOFT_GOLD; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y + 35, playlistDropdownRect.w, trackNames.length * 35, 10); ctx.fill(); ctx.stroke();
                 trackNames.forEach((name, idx) => {
-                    drawOutlinedText(name, playlistDropdownRect.x + 72, playlistDropdownRect.y + 58 + (idx * 35), "12px Arial", idx === currentTrackIndex ? SOFT_GOLD : WHITE);
+                    drawOutlinedText(name, playlistDropdownRect.x + 80, playlistDropdownRect.y + 52 + (idx * 35), "11px Arial", idx === currentTrackIndex ? SOFT_GOLD : WHITE);
                 });
             }
 
-            // Wooden Mute Button
-            ctx.fillStyle = "#8b4513";
-            ctx.strokeStyle = DARK_BROWN;
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(muteButtonRect.x + 22, muteButtonRect.y + 22, 21, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-            let activeIcon = isMuted ? muteImg : speakerImg;
-            if (activeIcon.complete && activeIcon.naturalWidth !== 0) {
-                ctx.drawImage(activeIcon, muteButtonRect.x + 7, muteButtonRect.y + 7, 30, 30);
-            }
-
-            // Volume Slider Bar
-            ctx.fillStyle = "#1a0a00";
-            ctx.fillRect(volumeSliderRect.x, volumeSliderRect.y + 8, volumeSliderRect.w, 4);
-            ctx.fillStyle = SOFT_GOLD;
-            ctx.beginPath();
-            ctx.arc(volumeSliderRect.x + (masterVolume * volumeSliderRect.w), volumeSliderRect.y + 10, 8, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Time Mode Toggle Button
-            drawWoodenButton(timeToggleRect, timeModes[timeModeIndex]);
-
-            // Hazard Threat & Defense Controls
+            // Hazard Threat & Projectile Animation
             drawHazardAndDefenseGraphics();
 
             // Reels Matrix Display
@@ -694,11 +738,11 @@
             ctx.lineTo(reelStartX + 3 * symbolSize + 2 * 45 + 15, 240);
             ctx.stroke();
 
-            // Banner Notification Text
+            // Banner Notification Text (Safely positioned to avoid overlap)
             if (bannerAlpha > 0) {
                 ctx.save();
                 ctx.globalAlpha = Math.min(1.0, bannerAlpha);
-                drawOutlinedText(bannerText, canvas.width / 2, 130, "22px Arial bold", SOFT_GOLD, DARK_BROWN);
+                drawOutlinedText(bannerText, canvas.width / 2, 115, "20px Arial bold", SOFT_GOLD, DARK_BROWN);
                 ctx.restore();
                 bannerAlpha -= 0.008;
             }
@@ -706,7 +750,7 @@
             drawPayoutOval();
             drawBetSliderOval();
 
-            // Bottom Controls (Restart, Spin Temple, Vines, Slingshot)
+            // Bottom Controls
             drawWoodenButton(spinPlankRect, isGameOver ? "GAME OVER" : "SPIN TEMPLE");
             drawWoodenButton(restartWheelRect, "Restart", true);
 
