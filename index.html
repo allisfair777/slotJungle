@@ -122,7 +122,7 @@
         let currentBet = betSteps[betIndex];
         let isBetAllActive = false;
         
-        // Muted by default with identical very low volume (0.15)
+        // 3) Identical low load volumes
         let musicMuted = true;
         let musicVolume = 0.15;
         let soundsMuted = true;
@@ -142,12 +142,12 @@
         let isGameOver = false;
 
         let bannerText = "";
-        let bannerAlpha = 0;
+        let bannerAlpha = 0; // Controlled fade rate for slow pacing (Requirement 4)
         let flowerParticles = [];
         let screenShakeTimer = 0;
         let screenShakeIntensity = 0;
 
-        let activeHazard = null; // { type, reelIndex, penaltyPct, startTime, rewardBonus }
+        let activeHazard = null; 
         let hazardActive = false;
         let currentAimReel = 1;
         let stoneProjectile = null;
@@ -257,7 +257,7 @@
                 this.rot = Math.random() * Math.PI;
                 this.vRot = (Math.random() - 0.5) * 0.1;
                 this.alpha = 1.0;
-                this.life = 100;
+                this.life = 160; // Slower fade for celebration particles
                 let colors = ["#ff70a6", "#ff9770", "#ffd670", "#e9ff70", "#70d6ff"];
                 this.color = colors[Math.floor(Math.random() * colors.length)];
                 this.size = Math.random() * 5 + 4;
@@ -265,10 +265,10 @@
             update(dt) {
                 this.x += this.vx * dt;
                 this.y += this.vy * dt;
-                this.vy += 0.05;
+                this.vy += 0.04;
                 this.rot += this.vRot;
                 this.life -= dt;
-                this.alpha = Math.max(0, this.life / 100);
+                this.alpha = Math.max(0, this.life / 160);
             }
             draw() {
                 if (this.alpha <= 0) return;
@@ -352,21 +352,20 @@
             let symbolSize = 80;
             let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
 
-            // Hazard Timeout Check (25 Seconds Slower Pacing)
+            // 1) Hazard Timeout Check (Extended to 45 Seconds for 3x longer duration)
             if (hazardActive && activeHazard) {
-                let hazardDurationMs = 25000;
+                let hazardDurationMs = 45000;
                 let elapsed = Date.now() - activeHazard.startTime;
                 let timeLeft = Math.max(0, hazardDurationMs - elapsed);
                 if (timeLeft === 0) {
                     let penalty = Math.max(500, Math.floor(balance * activeHazard.penaltyPct));
                     balance = Math.max(0, balance - penalty);
                     bannerText = `TIME OUT! -$${penalty.toLocaleString()} PENALTY`;
-                    bannerAlpha = 3.0;
+                    bannerAlpha = 4.0; // Slower fade duration
                     hazardActive = false;
                     activeHazard = null;
                 } else {
                     ctx.save();
-                    // Accurately position over the specific reel where hazard spawned
                     let hx = reelStartX + activeHazard.reelIndex * 125 + 40;
                     let hy = 240;
 
@@ -375,16 +374,14 @@
                         drawTransparentImage(hImg, hx - 35, hy - 35, 70, 70, false);
                     }
 
-                    // Render Countdown Timer Bar above hazard
                     ctx.fillStyle = "#333";
                     ctx.fillRect(hx - 25, hy - 50, 50, 6);
-                    ctx.fillStyle = timeLeft < 4000 ? "#ff3333" : "#4dff4d";
+                    ctx.fillStyle = timeLeft < 6000 ? "#ff3333" : "#4dff4d";
                     ctx.fillRect(hx - 25, hy - 50, 50 * (timeLeft / hazardDurationMs), 6);
                     ctx.restore();
                 }
             }
 
-            // Brown Aim Arc Indicator positioned strictly over current aim reel
             let aimX = reelStartX + currentAimReel * 125 + 40;
             ctx.save();
             ctx.strokeStyle = "#8b4513";
@@ -394,7 +391,6 @@
             ctx.stroke();
             ctx.restore();
 
-            // Stone Projectile Trajectory with Trailing Feedback Dots
             if (stoneProjectile) {
                 stoneProjectile.progress += 0.05;
                 let curX = stoneProjectile.startX + (stoneProjectile.targetX - stoneProjectile.startX) * stoneProjectile.progress;
@@ -404,7 +400,7 @@
 
                 ctx.save();
                 stoneProjectile.trail.forEach((pt) => {
-                    pt.alpha -= 0.04;
+                    pt.alpha -= 0.03;
                     if (pt.alpha > 0) {
                         ctx.fillStyle = `rgba(212, 163, 115, ${pt.alpha})`;
                         ctx.beginPath();
@@ -427,24 +423,26 @@
                         let bonus = activeHazard.rewardBonus;
                         balance += bonus;
                         bannerText = `DIRECT HIT! BONUS +$${bonus.toLocaleString()}!`;
-                        bannerAlpha = 3.0;
+                        bannerAlpha = 4.0; // Slower fade
                         playSound(document.getElementById("hitSound"));
                         playSound(winSound);
                         triggerScreenShake(300, 6);
-                        for (let i = 0; i < 40; i++) {
-                            flowerParticles.push(new FlowerParticle(canvas.width / 2, 250));
+                        
+                        // 2) Celebratory splash centered directly over the hit hazard card!
+                        let hitCardX = reelStartX + activeHazard.reelIndex * 125 + 40;
+                        for (let i = 0; i < 50; i++) {
+                            flowerParticles.push(new FlowerParticle(hitCardX, 240));
                         }
                         hazardActive = false;
                         activeHazard = null;
                     } else if (activeHazard) {
                         bannerText = "MISSED TARGET! TRY AGAIN!";
-                        bannerAlpha = 2.0;
+                        bannerAlpha = 3.0;
                     }
                     stoneProjectile = null;
                 }
             }
 
-            // Render Slingshot & Vine Controls
             ctx.save();
             ctx.globalAlpha = (currentAimReel === 0) ? 0.4 : 1.0;
             drawTransparentImage(vineImg, leftVineBtnRect.x, leftVineBtnRect.y, leftVineBtnRect.w, leftVineBtnRect.h, false);
@@ -472,17 +470,18 @@
 
             let rowY = [payoutOvalRect.y + 42, payoutOvalRect.y + 66, payoutOvalRect.y + 90, payoutOvalRect.y + 114];
 
+            // 6) Clarified 3x Payout Labeling
             ctx.drawImage(shibaImg, payoutOvalRect.x + 20, rowY[0] - 10, 20, 20);
-            drawOutlinedText("$100,000", payoutOvalRect.x + 85, rowY[0], "11px Arial bold", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("3x Shiba - $100,000", payoutOvalRect.x + 85, rowY[0], "10px Arial bold", WHITE, DARK_BROWN, "left");
 
             ctx.drawImage(jungleImg, payoutOvalRect.x + 20, rowY[1] - 10, 20, 20);
-            drawOutlinedText("$75,000", payoutOvalRect.x + 85, rowY[1], "11px Arial bold", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("3x Wild - $75,000", payoutOvalRect.x + 85, rowY[1], "10px Arial bold", WHITE, DARK_BROWN, "left");
 
             ctx.drawImage(monkeyImg, payoutOvalRect.x + 20, rowY[2] - 10, 20, 20);
-            drawOutlinedText("$50,000", payoutOvalRect.x + 85, rowY[2], "11px Arial bold", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("3x Animals - $50,000", payoutOvalRect.x + 85, rowY[2], "10px Arial bold", WHITE, DARK_BROWN, "left");
 
             ctx.drawImage(tigerImg, payoutOvalRect.x + 20, rowY[3] - 10, 20, 20);
-            drawOutlinedText("$25,000", payoutOvalRect.x + 85, rowY[3], "11px Arial bold", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("2x Any - $25,000", payoutOvalRect.x + 85, rowY[3], "10px Arial bold", WHITE, DARK_BROWN, "left");
 
             let hazX = payoutOvalRect.x + 203;
             drawOutlinedText("Jaguar Trap", hazX + 25, rowY[0], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
@@ -710,7 +709,7 @@
                         if (payout > 0) {
                             balance += payout;
                             bannerText = `WIN! +$${payout.toLocaleString()}`;
-                            bannerAlpha = 2.0;
+                            bannerAlpha = 4.0; // Slower win banner fade
                             playSound(winSound);
                             triggerScreenShake(300, 6);
                             for(let i=0; i<35; i++) flowerParticles.push(new FlowerParticle(400, 250));
@@ -732,8 +731,9 @@
                                 };
                                 hazardActive = true;
 
+                                // 5) Include hazard name and clear prompt
                                 bannerText = `${chosenType.toUpperCase()} ON REEL ${targetReel+1}! AIM & FIRE!`;
-                                bannerAlpha = 3.5;
+                                bannerAlpha = 4.0; // Slower fade for hazard warning
                                 triggerScreenShake(400, 8);
                             }
                         }
@@ -752,7 +752,7 @@
                             balance = 0;
                             isGameOver = true;
                             bannerText = "GAME OVER: OUT OF TREASURE";
-                            bannerAlpha = 4.0;
+                            bannerAlpha = 5.0;
                         }
                     }
                 }, 50);
@@ -831,7 +831,6 @@
 
             drawHazardAndDefenseGraphics();
 
-            // Reels Matrix Display (Payline Removed)
             const symbolSize = 80;
             const reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
             for (let i = 0; i < 3; i++) {
@@ -849,12 +848,13 @@
                 }
             }
 
+            // 4) Slower banner fade rate (0.003 instead of 0.008)
             if (bannerAlpha > 0) {
                 ctx.save();
                 ctx.globalAlpha = Math.min(1.0, bannerAlpha);
                 drawOutlinedText(bannerText, canvas.width / 2, 115, "19px Arial bold", SOFT_GOLD, DARK_BROWN);
                 ctx.restore();
-                bannerAlpha -= 0.008;
+                bannerAlpha -= 0.003;
             }
 
             drawPayoutOval();
