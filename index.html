@@ -58,7 +58,7 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        // Load Images
+        // Load Images & Assets
         const bgImg = new Image(); bgImg.src = "casino_background.png";
         const shibaImg = new Image(); shibaImg.src = "shiba.png";
         const tigerImg = new Image(); tigerImg.src = "tiger.png";
@@ -67,6 +67,10 @@
         const jungleImg = new Image(); jungleImg.src = "jungle.png";
         const speakerImg = new Image(); speakerImg.src = "speaker.png";
         const muteImg = new Image(); muteImg.src = "mute.png";
+        
+        // Custom Controls Assets
+        const slingshotImg = new Image(); slingshotImg.src = "slingshot.png";
+        const vineImg = new Image(); vineImg.src = "leftvine.png";
 
         const symbols = ["Shiba", "Tiger", "Parrot", "Monkey", "Jungle"];
         const symbolImages = {
@@ -89,10 +93,10 @@
         let currentBet = betSteps[betIndex];
         let isBetAllActive = false;
         
-        // Audio Control System
+        // 1) Launch Muted by default
         let musicMuted = true;
         let musicVolume = 0.3;
-        let soundsMuted = false;
+        let soundsMuted = true;
         let soundsVolume = 0.5;
 
         // Music Playlist & Dropdown State
@@ -115,11 +119,11 @@
         let screenShakeTimer = 0;
         let screenShakeIntensity = 0;
 
-        // Hazard & Positional Threat State
+        // Hazard & Aiming State (0 = Left, 1 = Center, 2 = Right)
         let activeHazard = null; // { type: 'jaguar'|'vine', reelIndex: 0..2, x, y }
         let hazardActive = false;
+        let currentAimReel = 1; // Starts centered
         let stoneProjectile = null; // { startX, startY, targetX, targetY, progress }
-        let chosenAimVine = null; // 'left' | 'right' | 'slingshot'
 
         // Environment visuals
         let stars = [];
@@ -131,28 +135,26 @@
             fireflies.push({ x: Math.random() * 800, y: Math.random() * 400 + 150, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, alpha: Math.random() });
         }
 
-        // Layout Rectangles (Clean Packing)
+        // Layout Rectangles (Aligned and packed cleanly)
         const logoRect = { x: 25, y: 15, w: 55, h: 55 };
         const payoutOvalRect = { x: 25, y: 295, w: 365, h: 140 };
         const betSliderOvalRect = { x: 410, y: 295, w: 365, h: 140 };
         const spinPlankRect = { x: 550, y: 455, w: 225, h: 65 };
         const restartWheelRect = { x: 25, y: 455, w: 65, h: 65 };
         
-        // Two-Column Top Right Control Rack
-        // Column 1: Music & Playlist
-        const musicMuteRect = { x: 420, y: 15, w: 32, h: 32 };
-        const musicSliderRect = { x: 460, y: 23, w: 75, h: 16 };
-        const playlistDropdownRect = { x: 420, y: 55, w: 115, h: 30 };
+        // Top Right Control Rack Aligned with Spin Temple Button
+        const musicMuteRect = { x: 440, y: 15, w: 32, h: 32 };
+        const musicSliderRect = { x: 480, y: 23, w: 75, h: 16 };
+        const playlistDropdownRect = { x: 440, y: 55, w: 115, h: 30 };
 
-        // Column 2: Sounds & Day/Night
-        const soundsMuteRect = { x: 555, y: 15, w: 32, h: 32 };
-        const soundsSliderRect = { x: 595, y: 23, w: 75, h: 16 };
-        const timeToggleRect = { x: 555, y: 55, w: 115, h: 30 };
+        const soundsMuteRect = { x: 575, y: 15, w: 32, h: 32 };
+        const soundsSliderRect = { x: 615, y: 23, w: 75, h: 16 };
+        const timeToggleRect = { x: 575, y: 55, w: 115, h: 30 };
 
-        // Tactical Defense Controls (Left Vine, Right Vine, Slingshot)
-        const leftVineBtnRect = { x: 310, y: 455, w: 55, h: 65 };
-        const rightVineBtnRect = { x: 375, y: 455, w: 55, h: 65 };
-        const slingshotBtnRect = { x: 440, y: 455, w: 100, h: 65 };
+        // Slingshot & Aiming Controls Placed Between Rectangles (Cannon Spot)
+        const leftVineBtnRect = { x: 310, y: 455, w: 50, h: 65 };
+        const rightVineBtnRect = { x: 370, y: 455, w: 50, h: 65 };
+        const slingshotBtnRect = { x: 430, y: 455, w: 105, h: 65 };
 
         function updateAudioVolumes() {
             soundtracks.forEach((track, idx) => {
@@ -281,37 +283,45 @@
         }
 
         function drawHazardAndDefenseGraphics() {
-            // Draw Positional Hazard directly above the specific reel (Left, Center, or Right)
+            // Draw Hazard above target reel
             if (hazardActive && activeHazard) {
                 ctx.save();
                 let hx = activeHazard.x;
                 let hy = activeHazard.y;
 
                 if (activeHazard.type === 'jaguar') {
-                    // Draw Jaguar Threat Graphic above reel
                     ctx.fillStyle = "#ffcc00";
                     ctx.shadowColor = "#ff3300";
                     ctx.shadowBlur = 15;
                     ctx.beginPath(); ctx.arc(hx - 15, hy, 10, 0, Math.PI * 2); ctx.fill();
                     ctx.beginPath(); ctx.arc(hx + 15, hy, 10, 0, Math.PI * 2); ctx.fill();
-                    drawOutlinedText("⚠️ JAGUAR", hx, hy - 20, "12px Arial bold", "#ff4d4d");
+                    drawOutlinedText("⚠️ JAGUAR", hx, hy - 20, "11px Arial bold", "#ff4d4d");
                 } else {
-                    // Draw Venom Vine Threat Graphic above reel
                     ctx.strokeStyle = "#4dff4d";
                     ctx.lineWidth = 6;
                     ctx.beginPath();
-                    ctx.moveTo(hx - 25, hy + 10); ctx.quadraticCurveTo(hx, hy - 20, hx + 25, hy + 10);
+                    ctx.moveTo(hx - 20, hy + 10); ctx.quadraticCurveTo(hx, hy - 20, hx + 20, hy + 10);
                     ctx.stroke();
-                    drawOutlinedText("⚠️ VINE", hx, hy - 20, "12px Arial bold", "#4dff4d");
+                    drawOutlinedText("⚠️ VINE", hx, hy - 20, "11px Arial bold", "#4dff4d");
                 }
                 ctx.restore();
             }
 
-            // Render Stone Projectile traveling from Slingshot to Hazard
+            // Draw Aim Indicator Arc above current aim reel
+            let symbolSize = 80;
+            let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
+            let aimX = reelStartX + currentAimReel * 125 + 40;
+            ctx.strokeStyle = "#4dff4d";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(aimX, 190, 45, Math.PI, 0, false);
+            ctx.stroke();
+
+            // Render Stone Projectile traveling from Slingshot to Aimed Target
             if (stoneProjectile) {
                 stoneProjectile.progress += 0.06;
                 let curX = stoneProjectile.startX + (stoneProjectile.targetX - stoneProjectile.startX) * stoneProjectile.progress;
-                let curY = stoneProjectile.startY + (stoneProjectile.targetY - stoneProjectile.startY) * stoneProjectile.progress - Math.sin(stoneProjectile.progress * Math.PI) * 60;
+                let curY = stoneProjectile.startY + (stoneProjectile.targetY - stoneProjectile.startY) * stoneProjectile.progress - Math.sin(stoneProjectile.progress * Math.PI) * 70;
                 
                 ctx.fillStyle = "#e0e0e0";
                 ctx.strokeStyle = "#222";
@@ -323,29 +333,37 @@
 
                 if (stoneProjectile.progress >= 1.0) {
                     stoneProjectile = null;
-                    hazardActive = false;
-                    activeHazard = null;
-                    bannerText = "TARGET HIT! HAZARD DEFEATED!";
+                    if (activeHazard && activeHazard.reelIndex === currentAimReel) {
+                        hazardActive = false;
+                        activeHazard = null;
+                        bannerText = "DIRECT HIT! HAZARD DEFEATED!";
+                        playSound(winSound);
+                    } else {
+                        bannerText = "MISSED TARGET!";
+                    }
                     bannerAlpha = 2.0;
                 }
             }
 
-            // Draw Slingshot & Aiming Vines Controls at bottom
+            // Draw Aiming Vines & Slingshot Controls
             ctx.save();
-            ctx.fillStyle = "#2d6a4f"; ctx.strokeStyle = SOFT_GOLD; ctx.lineWidth = 2;
             
-            // Left Vine Aim Button
-            ctx.beginPath(); ctx.roundRect(leftVineBtnRect.x, leftVineBtnRect.y, leftVineBtnRect.w, leftVineBtnRect.h, 12); ctx.fill(); ctx.stroke();
-            drawOutlinedText("🌿 VINE\nLEFT", leftVineBtnRect.x + 27, leftVineBtnRect.y + 32, "10px Arial bold", SOFT_GOLD);
+            // Left Vine Button (Disabled if at leftmost reel 0)
+            ctx.globalAlpha = (currentAimReel === 0) ? 0.4 : 1.0;
+            ctx.drawImage(vineImg, leftVineBtnRect.x, leftVineBtnRect.y, leftVineBtnRect.w, leftVineBtnRect.h);
+            ctx.globalAlpha = 1.0;
+            drawOutlinedText("LEFT", leftVineBtnRect.x + 25, leftVineBtnRect.y + 52, "9px Arial bold", SOFT_GOLD);
 
-            // Right Vine Aim Button
-            ctx.beginPath(); ctx.roundRect(rightVineBtnRect.x, rightVineBtnRect.y, rightVineBtnRect.w, rightVineBtnRect.h, 12); ctx.fill(); ctx.stroke();
-            drawOutlinedText("🌿 VINE\nRIGHT", rightVineBtnRect.x + 27, rightVineBtnRect.y + 32, "10px Arial bold", SOFT_GOLD);
+            // Right Vine Button (Disabled if at rightmost reel 2)
+            ctx.globalAlpha = (currentAimReel === 2) ? 0.4 : 1.0;
+            ctx.drawImage(vineImg, rightVineBtnRect.x, rightVineBtnRect.y, rightVineBtnRect.w, rightVineBtnRect.h);
+            ctx.globalAlpha = 1.0;
+            drawOutlinedText("RIGHT", rightVineBtnRect.x + 25, rightVineBtnRect.y + 52, "9px Arial bold", SOFT_GOLD);
 
-            // Slingshot Turret
-            ctx.fillStyle = "#8b4513";
-            ctx.beginPath(); ctx.roundRect(slingshotBtnRect.x, slingshotBtnRect.y, slingshotBtnRect.w, slingshotBtnRect.h, 12); ctx.fill(); ctx.stroke();
-            drawOutlinedText("🎯 SLINGSHOT", slingshotBtnRect.x + 50, slingshotBtnRect.y + 32, "11px Arial bold", SOFT_GOLD);
+            // Slingshot Turret Button
+            ctx.drawImage(slingshotImg, slingshotBtnRect.x + 10, slingshotBtnRect.y + 5, 55, 55);
+            ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
+            ctx.strokeRect(slingshotBtnRect.x, slingshotBtnRect.y, slingshotBtnRect.w, slingshotBtnRect.h);
 
             ctx.restore();
         }
@@ -510,7 +528,7 @@
                 return;
             }
 
-            // Independent Sounds (SFX) Mute Button
+            // Independent Sounds Mute Button
             if (x >= soundsMuteRect.x && x <= soundsMuteRect.x + soundsMuteRect.w && y >= soundsMuteRect.y && y <= soundsMuteRect.y + soundsMuteRect.h) {
                 soundsMuted = !soundsMuted;
                 updateAudioVolumes();
@@ -526,28 +544,33 @@
                 return;
             }
 
-            // Hazard Defense Click (Fires stone projectile from slingshot to target hazard)
-            if (hazardActive && activeHazard) {
-                let clickedVineOrSlingshot = false;
-                if (x >= leftVineBtnRect.x && x <= leftVineBtnRect.x + leftVineBtnRect.w && y >= leftVineBtnRect.y && y <= leftVineBtnRect.y + leftVineBtnRect.h) {
-                    chosenAimVine = 'left'; clickedVineOrSlingshot = true;
-                } else if (x >= rightVineBtnRect.x && x <= rightVineBtnRect.x + rightVineBtnRect.w && y >= rightVineBtnRect.y && y <= rightVineBtnRect.y + rightVineBtnRect.h) {
-                    chosenAimVine = 'right'; clickedVineOrSlingshot = true;
-                } else if (x >= slingshotBtnRect.x && x <= slingshotBtnRect.x + slingshotBtnRect.w && y >= slingshotBtnRect.y && y <= slingshotBtnRect.y + slingshotBtnRect.h) {
-                    clickedVineOrSlingshot = true;
-                }
+            // Aiming & Firing Controls
+            if (x >= leftVineBtnRect.x && x <= leftVineBtnRect.x + leftVineBtnRect.w && y >= leftVineBtnRect.y && y <= leftVineBtnRect.y + leftVineBtnRect.h) {
+                if (currentAimReel > 0) currentAimReel--;
+                playSound(clickSound);
+                return;
+            }
+            if (x >= rightVineBtnRect.x && x <= rightVineBtnRect.x + rightVineBtnRect.w && y >= rightVineBtnRect.y && y <= rightVineBtnRect.y + rightVineBtnRect.h) {
+                if (currentAimReel < 2) currentAimReel++;
+                playSound(clickSound);
+                return;
+            }
 
-                if (clickedVineOrSlingshot) {
-                    playSound(clickSound);
-                    stoneProjectile = {
-                        startX: slingshotBtnRect.x + 50,
-                        startY: slingshotBtnRect.y,
-                        targetX: activeHazard.x,
-                        targetY: activeHazard.y,
-                        progress: 0
-                    };
-                    return;
-                }
+            // Slingshot Fire Button
+            if (x >= slingshotBtnRect.x && x <= slingshotBtnRect.x + slingshotBtnRect.w && y >= slingshotBtnRect.y && y <= slingshotBtnRect.y + slingshotBtnRect.h) {
+                playSound(clickSound);
+                let symbolSize = 80;
+                let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
+                let targetX = reelStartX + currentAimReel * 125 + 40;
+                
+                stoneProjectile = {
+                    startX: slingshotBtnRect.x + 50,
+                    startY: slingshotBtnRect.y,
+                    targetX: targetX,
+                    targetY: 185,
+                    progress: 0
+                };
+                return;
             }
 
             // Bet Slider Click
@@ -611,11 +634,9 @@
                             triggerScreenShake(300, 6);
                             for(let i=0; i<35; i++) flowerParticles.push(new FlowerParticle(400, 250));
                         } else {
-                            // Guaranteed Hazard Chance for testing & gameplay
                             if (Math.random() < 0.6) {
                                 let hazards = ['jaguar', 'vine'];
                                 let chosen = hazards[Math.floor(Math.random() * hazards.length)];
-                                // Choose random reel position (0 = Left, 1 = Center, 2 = Right)
                                 let targetReel = Math.floor(Math.random() * 3);
                                 let symbolSize = 80;
                                 let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
@@ -628,7 +649,7 @@
                                 let pct = chosen === 'jaguar' ? 0.01 : 0.05;
                                 let penalty = Math.max(500, Math.floor(balance * pct));
                                 balance = Math.max(0, balance - penalty);
-                                bannerText = `${chosen.toUpperCase()} ATTACK ON REEL ${targetReel+1}! DEFEND!`;
+                                bannerText = `${chosen.toUpperCase()} ON REEL ${targetReel+1}! AIM & FIRE!`;
                                 bannerAlpha = 3.5;
                                 triggerScreenShake(400, 8);
                             }
@@ -699,9 +720,9 @@
             drawOutlinedText(`Highest Loot  $${highscore.toLocaleString()}`, 95, 28, "18px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
             drawOutlinedText(`Treasure Hunt $${balance.toLocaleString()}`, 95, 55, "20px Arial bold", WHITE, DARK_BROWN, "left");
 
-            // --- TWO-COLUMN TOP RIGHT CONTROL RACK ---
+            // --- CONTROL RACK ALIGNED WITH SPIN TEMPLE ---
             
-            // Column 1: Music & Playlist Dropdown
+            // Column 1: Music & Playlist
             ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.roundRect(musicMuteRect.x, musicMuteRect.y, musicMuteRect.w, musicMuteRect.h, 8); ctx.fill(); ctx.stroke();
             ctx.drawImage(musicMuted ? muteImg : speakerImg, musicMuteRect.x + 4, musicMuteRect.y + 4, 24, 24);
@@ -709,7 +730,6 @@
             ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(musicSliderRect.x + (musicVolume * musicSliderRect.w), musicSliderRect.y + 8, 6, 0, Math.PI * 2); ctx.fill();
             drawOutlinedText("MUSIC", musicMuteRect.x + 35, musicMuteRect.y - 6, "9px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
 
-            // Playlist Dropdown below Music controls
             ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y, playlistDropdownRect.w, playlistDropdownRect.h, 8); ctx.fill(); ctx.stroke();
             drawOutlinedText(`🎵 ${trackNames[currentTrackIndex].split(" ")[0]} ▾`, playlistDropdownRect.x + 57, playlistDropdownRect.y + 15, "11px Arial bold", SOFT_GOLD);
@@ -722,7 +742,7 @@
                 });
             }
 
-            // Column 2: Sounds (SFX) & Day/Night Toggle
+            // Column 2: Sounds & Day/Night
             ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.roundRect(soundsMuteRect.x, soundsMuteRect.y, soundsMuteRect.w, soundsMuteRect.h, 8); ctx.fill(); ctx.stroke();
             ctx.drawImage(soundsMuted ? muteImg : speakerImg, soundsMuteRect.x + 4, soundsMuteRect.y + 4, 24, 24);
@@ -730,12 +750,11 @@
             ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(soundsSliderRect.x + (soundsVolume * soundsSliderRect.w), soundsSliderRect.y + 8, 6, 0, Math.PI * 2); ctx.fill();
             drawOutlinedText("SOUNDS", soundsMuteRect.x + 35, soundsMuteRect.y - 6, "9px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
 
-            // Day/Night Toggle below Sounds controls
             drawWoodenButton(timeToggleRect, timeModes[timeModeIndex]);
 
             // --- END CONTROL RACK ---
 
-            // Hazard Threat & Slingshot Projectile Graphics
+            // Hazard Threat & Aiming / Slingshot Projectile Graphics
             drawHazardAndDefenseGraphics();
 
             // Reels Matrix Display
