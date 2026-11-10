@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jungle Riches Slot</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0b1a0f;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 700px;
+            max-height: 600px;
+            aspect-ratio: 700 / 600;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Audio Elements -->
+    <audio id="spinSound" src="spin.wav"></audio>
+    <audio id="winSound" src="win.wav"></audio>
+    <audio id="clickSound" src="click.wav"></audio>
+    <audio id="quitSound" src="quit.wav"></audio>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="700" height="600"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Load Images
+        const bgImg = new Image(); bgImg.src = "casino_background.png";
+        const shibaImg = new Image(); shibaImg.src = "shiba.png";
+        const tigerImg = new Image(); tigerImg.src = "tiger.png";
+        const parrotImg = new Image(); parrotImg.src = "parrot.png";
+        const monkeyImg = new Image(); monkeyImg.src = "monkey.png";
+        const jungleImg = new Image(); jungleImg.src = "jungle.png";
+
+        // Load Custom Mute / Speaker Icons
+        const speakerImg = new Image(); speakerImg.src = "speaker.png";
+        const muteImg = new Image(); muteImg.src = "mute.png";
+
+        const symbols = ["Shiba", "Tiger", "Parrot", "Monkey", "Jungle"];
+        const symbolImages = {
+            "Shiba": shibaImg,
+            "Tiger": tigerImg,
+            "Parrot": parrotImg,
+            "Monkey": monkeyImg,
+            "Jungle": jungleImg
+        };
+
+        let balance = 10000;
+        let highscore = parseInt(localStorage.getItem("jungle_highscore")) || 10000;
+        let currentBet = 10;
+        let minBet = 10;
+        let maxBet = 100;
+        let isMuted = false;
+
+        let reels = ["Shiba", "Tiger", "Parrot"];
+        let spinning = false;
+        let winText = "";
+        let winAlpha = 0;
+
+        let particles = [];
+        let lastTime = performance.now();
+
+        function playSound(soundObj) {
+            if (!isMuted && soundObj) {
+                soundObj.currentTime = 0;
+                soundObj.play().catch(e => {});
+            }
+        }
+
+        class Particle {
+            constructor(x, y, isSparkle = false) {
+                this.x = x;
+                this.y = y;
+                this.isSparkle = isSparkle;
+                this.vx = (Math.random() - 0.5) * 4;
+                this.vy = -(Math.random() * 3 + 1);
+                this.life = 60;
+                this.size = isSparkle ? 2 : 4;
+            }
+            update(dt) {
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.life -= dt;
+            }
+            draw() {
+                ctx.save();
+                ctx.fillStyle = this.isSparkle ? "#fff5cc" : "#ffe5cc";
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function drawOutlinedText(text, x, y, font, fillColor, outlineColor = "#000", align = "center") {
+            ctx.save();
+            ctx.font = font;
+            ctx.textAlign = align;
+            ctx.textBaseline = "middle";
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = outlineColor;
+            ctx.strokeText(text, x, y);
+            ctx.fillStyle = fillColor;
+            ctx.fillText(text, x, y);
+            ctx.restore();
+        }
+
+        function drawButton(rect, text) {
+            ctx.save();
+            ctx.fillStyle = "#8b4513";
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 12);
+            ctx.fill();
+            ctx.stroke();
+
+            drawOutlinedText(text, rect.x + rect.w / 2, rect.y + rect.h / 2, "16px Arial bold", "#f0c8d2");
+            ctx.restore();
+        }
+
+        canvas.addEventListener("pointerdown", (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // Mute Button Check
+            if (Math.hypot(x - 50, y - 50) <= 25) {
+                isMuted = !isMuted;
+                playSound(clickSound);
+                return;
+            }
+
+            if (spinning) return;
+
+            // Bet Minus
+            if (x >= 180 && x <= 235 && y >= 520 && y <= 570) {
+                playSound(clickSound);
+                currentBet = Math.max(minBet, currentBet - 10);
+            }
+            // Bet Plus
+            else if (x >= 245 && x <= 300 && y >= 520 && y <= 570) {
+                playSound(clickSound);
+                currentBet = Math.min(maxBet, currentBet + 10);
+            }
+            // Max Bet
+            else if (x >= 310 && x <= 390 && y >= 520 && y <= 570) {
+                playSound(clickSound);
+                currentBet = maxBet;
+            }
+            // Spin Button
+            else if (x >= 400 && x <= 520 && y >= 520 && y <= 570) {
+                if (balance >= currentBet) {
+                    balance -= currentBet;
+                    spinning = true;
+                    playSound(spinSound);
+
+                    let spinTimer = 0;
+                    let spinInterval = setInterval(() => {
+                        reels = [
+                            symbols[Math.floor(Math.random() * symbols.length)],
+                            symbols[Math.floor(Math.random() * symbols.length)],
+                            symbols[Math.floor(Math.random() * symbols.length)]
+                        ];
+                        spinTimer += 50;
+                        if (spinTimer >= 1500) {
+                            clearInterval(spinInterval);
+                            spinning = false;
+
+                            if (reels[0] === reels[1] && reels[1] === reels[2]) {
+                                let payout = currentBet * (reels[0] === "Shiba" ? 50 : 25);
+                                balance += payout;
+                                winText = `WIN! +$${payout}`;
+                                winAlpha = 2.0;
+                                playSound(winSound);
+
+                                for (let i = 0; i < 25; i++) {
+                                    particles.push(new Particle(350, 325, i % 2 === 0));
+                                }
+                            }
+
+                            if (balance > highscore) {
+                                highscore = balance;
+                                localStorage.setItem("jungle_highscore", highscore);
+                            }
+                        }
+                    }, 50);
+                }
+            }
+            // Cash Out / Quit
+            else if (x >= 540 && x <= 660 && y >= 20 && y <= 70) {
+                playSound(quitSound);
+                alert("Cashed out! Final Balance: $" + balance);
+            }
+        });
+
+        function gameLoop(currentTime) {
+            let dt = (currentTime - lastTime) / 16.67;
+            lastTime = currentTime;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background
+            if (bgImg.complete && bgImg.naturalWidth !== 0) {
+                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = "#1b4931";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Scoreboards
+            drawOutlinedText(`Highest Loot: $${highscore.toLocaleString()}`, 350, 35, "20px Arial bold", "#ffd166");
+            drawOutlinedText(`Treasure Balance: $${balance.toLocaleString()}`, 350, 70, "24px Arial bold", "#ffffff");
+
+            // Mute Toggle Button Frame
+            ctx.fillStyle = "#8b4513";
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(50, 50, 25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Render Custom Speaker / Mute Image Icon
+            let activeIcon = isMuted ? muteImg : speakerImg;
+            if (activeIcon.complete && activeIcon.naturalWidth !== 0) {
+                ctx.drawImage(activeIcon, 50 - 16, 50 - 16, 32, 32);
+            }
+
+            // Reels Window Frame
+            const symbolSize = 100;
+            const reelXStart = 200;
+            const reelY = 275;
+
+            for (let i = 0; i < 3; i++) {
+                let rx = reelXStart + (i * 105);
+                ctx.fillStyle = "#d2b48c";
+                ctx.strokeStyle = "#000";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.roundRect(rx, reelY - 50, symbolSize, symbolSize, 12);
+                ctx.fill();
+                ctx.stroke();
+
+                let sym = reels[i];
+                if (symbolImages[sym] && symbolImages[sym].complete) {
+                    ctx.drawImage(symbolImages[sym], rx + 10, reelY - 40, 80, 80);
+                }
+            }
+
+            // Payline Indicator Line
+            ctx.strokeStyle = "#ff0000";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(190, reelY);
+            ctx.lineTo(510, reelY);
+            ctx.stroke();
+
+            // Win Banner Notification
+            if (winAlpha > 0) {
+                ctx.save();
+                ctx.globalAlpha = Math.min(1.0, winAlpha);
+                drawOutlinedText(winText, 350, 160, "32px Arial bold", "#ffd166");
+                ctx.restore();
+                winAlpha -= 0.02 * dt;
+            }
+
+            // Controls & Buttons
+            drawButton({x: 180, y: 520, w: 55, h: 50}, "Bet-");
+            drawButton({x: 245, y: 520, w: 55, h: 50}, "Bet+");
+            drawButton({x: 310, y: 520, w: 80, h: 50}, `Bet $${currentBet}`);
+            drawButton({x: 400, y: 520, w: 120, h: 50}, "SPIN");
+            drawButton({x: 540, y: 20, w: 120, h: 50}, "Cash Out");
+
+            // Update Particles
+            particles.forEach((p, index) => {
+                p.update(dt);
+                p.draw();
+                if (p.life <= 0) particles.splice(index, 1);
+            });
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
