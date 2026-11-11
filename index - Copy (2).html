@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Slot Jungle: Temple Riches</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050d07;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 800px;
+            max-height: 600px;
+            aspect-ratio: 800 / 600;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border-radius: 30px;
+            overflow: hidden;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Audio Elements -->
+    <audio id="track0" src="jungle_beat1.mp3" loop></audio>
+    <audio id="track1" src="jungle_beat2.mp3" loop></audio>
+    <audio id="rainforestSound" src="rainforest.mp3" loop></audio>
+    <audio id="spinSound" src="spin.wav"></audio>
+    <audio id="winSound" src="win.wav"></audio>
+    <audio id="clickSound" src="click.wav"></audio>
+    <audio id="hitSound" src="hit.wav"></audio>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSynthesizedHit() {
+            try {
+                if (!audioCtx) audioCtx = new AudioContext();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.18);
+                gain.gain.setValueAtTime(0.6 * soundsVolume, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.18);
+            } catch(e) {}
+        }
+
+        // Load Images & Assets
+        const bgImg = new Image(); bgImg.src = "casino_background.png";
+        const shibaImg = new Image(); shibaImg.src = "shiba.png";
+        const tigerImg = new Image(); tigerImg.src = "tiger.png";
+        const parrotImg = new Image(); parrotImg.src = "parrot.png";
+        const monkeyImg = new Image(); monkeyImg.src = "monkey.png";
+        const jungleImg = new Image(); jungleImg.src = "jungle.png";
+        const speakerImg = new Image(); speakerImg.src = "speaker.png";
+        const muteImg = new Image(); muteImg.src = "mute.png";
+        
+        const slingshotImg = new Image(); slingshotImg.src = "slingshot.png";
+        const vineImg = new Image(); vineImg.src = "leftvine.png";
+
+        const hazardImages = {
+            'jaguar': (() => { let img = new Image(); img.src = "jaguar.png"; return img; })(),
+            'venomvine': (() => { let img = new Image(); img.src = "venomvine.png"; return img; })(),
+            'quicksand': (() => { let img = new Image(); img.src = "quicksand.png"; return img; })(),
+            'templecurse': (() => { let img = new Image(); img.src = "templecurse.png"; return img; })()
+        };
+
+        const symbols = ["Shiba", "Tiger", "Parrot", "Monkey", "Jungle"];
+        const symbolImages = {
+            "Shiba": shibaImg,
+            "Tiger": tigerImg,
+            "Parrot": parrotImg,
+            "Monkey": monkeyImg,
+            "Jungle": jungleImg
+        };
+
+        const SOFT_GOLD = "#d4a373";
+        const DARK_BROWN = "#1a0a00";
+        const WHITE = "#ffffff";
+
+        let balance = 100000;
+        let highscore = parseInt(localStorage.getItem("jungle_highscore")) || 100000;
+        
+        const betSteps = [1000, 5000, 10000, 25000];
+        let betIndex = 0;
+        let currentBet = betSteps[betIndex];
+        let isBetAllActive = false;
+        
+        let musicMuted = true;
+        let musicVolume = 0.15;
+        let soundsMuted = true;
+        let soundsVolume = 0.15;
+
+        const soundtracks = [document.getElementById("track0"), document.getElementById("track1")];
+        const trackNames = ["Jungle Beats Vol. 1", "Rainforest Rhythms"];
+        let currentTrackIndex = 0;
+        let musicPlaying = false;
+        let playlistDropdownOpen = false;
+
+        const timeModes = ["Day", "Night", "Both"];
+        let timeModeIndex = 0;
+
+        let reels = ["Shiba", "Tiger", "Parrot"];
+        let spinning = false;
+        let isGameOver = false;
+
+        let bannerText = "";
+        let bannerAlpha = 0;
+        let flowerParticles = [];
+        let screenShakeTimer = 0;
+        let screenShakeIntensity = 0;
+
+        let activeHazard = null; 
+        let hazardActive = false;
+        let currentAimReel = 1;
+        let stoneProjectile = null;
+
+        let stars = [];
+        for (let i = 0; i < 40; i++) {
+            stars.push({ x: Math.random() * 800, y: Math.random() * 220, size: Math.random() * 2 + 1, alpha: Math.random(), speed: Math.random() * 0.03 + 0.01 });
+        }
+        let fireflies = [];
+        for (let i = 0; i < 15; i++) {
+            fireflies.push({ x: Math.random() * 800, y: Math.random() * 400 + 150, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, alpha: Math.random() });
+        }
+
+        // Layout Rectangles
+        const logoRect = { x: 25, y: 15, w: 55, h: 55 };
+        const payoutOvalRect = { x: 25, y: 295, w: 365, h: 140 };
+        const betSliderOvalRect = { x: 410, y: 295, w: 365, h: 140 };
+        const spinPlankRect = { x: 550, y: 455, w: 225, h: 65 };
+        const restartWheelRect = { x: 25, y: 455, w: 65, h: 65 };
+        
+        const musicMuteRect = { x: 550, y: 15, w: 32, h: 32 };
+        const musicSliderRect = { x: 590, y: 23, w: 75, h: 16 };
+        const playlistDropdownRect = { x: 550, y: 55, w: 115, h: 30 };
+
+        const soundsMuteRect = { x: 685, y: 15, w: 32, h: 32 };
+        const soundsSliderRect = { x: 725, y: 23, w: 50, h: 16 };
+        const timeToggleRect = { x: 685, y: 55, w: 90, h: 30 };
+
+        const leftVineBtnRect = { x: 325, y: 455, w: 45, h: 65 };
+        const slingshotBtnRect = { x: 380, y: 455, w: 45, h: 65 };
+        const rightVineBtnRect = { x: 435, y: 455, w: 45, h: 65 };
+
+        function updateAudioVolumes() {
+            soundtracks.forEach((track, idx) => {
+                if (track) track.volume = (musicMuted || idx !== currentTrackIndex || !musicPlaying) ? 0 : musicVolume;
+            });
+            let rainforest = document.getElementById("rainforestSound");
+            if (rainforest) {
+                rainforest.volume = soundsMuted ? 0 : soundsVolume * 0.6;
+                if (!soundsMuted && rainforest.paused) {
+                    rainforest.play().catch(e => {});
+                } else if (soundsMuted && !rainforest.paused) {
+                    rainforest.pause();
+                }
+            }
+
+            let sfxList = [document.getElementById("spinSound"), document.getElementById("winSound"), document.getElementById("clickSound"), document.getElementById("hitSound")];
+            sfxList.forEach(sfx => {
+                if (sfx) sfx.volume = soundsMuted ? 0 : soundsVolume;
+            });
+        }
+
+        function playSound(soundObj) {
+            if (!soundsMuted && soundObj && soundObj.src) {
+                soundObj.currentTime = 0;
+                soundObj.volume = soundsVolume;
+                soundObj.play().catch(e => {
+                    if (soundObj.id === 'hitSound') playSynthesizedHit();
+                });
+            } else if (!soundsMuted && soundObj && soundObj.id === 'hitSound') {
+                playSynthesizedHit();
+            }
+        }
+
+        function triggerScreenShake(durationMs = 300, intensity = 8) {
+            screenShakeTimer = durationMs;
+            screenShakeIntensity = intensity;
+        }
+
+        function drawTransparentImageRotated(img, x, y, w, h, flipH = false, angle = 0) {
+            if (!img.complete || img.naturalWidth === 0) return;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = img.naturalWidth;
+            tempCanvas.height = img.naturalHeight;
+            const tCtx = tempCanvas.getContext('2d');
+            tCtx.drawImage(img, 0, 0);
+            
+            let imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+            let data = imgData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i], g = data[i+1], b = data[i+2];
+                if (r > 220 && g > 220 && b > 220) {
+                    data[i+3] = 0;
+                } else if (b > 200 && r < 120 && g > 150) {
+                    data[i+3] = 0;
+                }
+            }
+            tCtx.putImageData(imgData, 0, 0);
+
+            ctx.save();
+            ctx.translate(x + w / 2, y + h / 2);
+            ctx.rotate(angle);
+            if (flipH) ctx.scale(-1, 1);
+            ctx.drawImage(tempCanvas, -w / 2, -h / 2, w, h);
+            ctx.restore();
+        }
+
+        class FlowerParticle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 4;
+                this.vy = -(Math.random() * 3 + 1);
+                this.rot = Math.random() * Math.PI;
+                this.vRot = (Math.random() - 0.5) * 0.1;
+                this.alpha = 1.0;
+                this.life = 160;
+                let colors = ["#ff70a6", "#ff9770", "#ffd670", "#e9ff70", "#70d6ff"];
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+                this.size = Math.random() * 5 + 4;
+            }
+            update(dt) {
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.vy += 0.04;
+                this.rot += this.vRot;
+                this.life -= dt;
+                this.alpha = Math.max(0, this.life / 160);
+            }
+            draw() {
+                if (this.alpha <= 0) return;
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rot);
+                ctx.fillStyle = this.color;
+                for (let i = 0; i < 4; i++) {
+                    ctx.beginPath();
+                    ctx.ellipse(0, this.size, this.size * 0.5, this.size, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.rotate(Math.PI / 2);
+                }
+                ctx.restore();
+            }
+        }
+
+        function drawOutlinedText(text, x, y, font, fillColor, outlineColor = DARK_BROWN, align = "center") {
+            ctx.save();
+            ctx.font = font;
+            ctx.textAlign = align;
+            ctx.textBaseline = "middle";
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = outlineColor;
+            ctx.strokeText(text, x, y);
+            ctx.fillStyle = fillColor;
+            ctx.fillText(text, x, y);
+            ctx.restore();
+        }
+
+        function getBetArcNodes() {
+            let startX = betSliderOvalRect.x + 35;
+            let endX = betSliderOvalRect.x + betSliderOvalRect.w - 50;
+            let startY = betSliderOvalRect.y + 98;
+            let endY = betSliderOvalRect.y + 28;
+
+            let nodes = [];
+            for (let i = 0; i < 5; i++) {
+                let t = i / 4;
+                let x = startX + t * (endX - startX);
+                let linearY = startY + t * (endY - startY);
+                let arcLift = Math.sin(t * Math.PI) * 14;
+                let y = linearY - arcLift;
+                nodes.push({ x, y });
+            }
+            return nodes;
+        }
+
+        function drawEnvironmentOverlay() {
+            let mode = timeModes[timeModeIndex];
+            let isNight = mode === "Night" || (mode === "Both" && Math.floor(Date.now() / 8000) % 2 === 1);
+
+            if (isNight) {
+                let skyGrad = ctx.createLinearGradient(0, 0, 0, 300);
+                skyGrad.addColorStop(0, "rgba(5, 12, 35, 0.75)");
+                skyGrad.addColorStop(1, "rgba(10, 30, 20, 0.4)");
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                stars.forEach(s => {
+                    s.alpha += s.speed;
+                    if (s.alpha > 1 || s.alpha < 0) s.speed = -s.speed;
+                    ctx.fillStyle = `rgba(255, 255, 220, ${Math.abs(s.alpha)})`;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                fireflies.forEach(f => {
+                    f.x += f.vx; f.y += f.vy;
+                    if (f.x < 0 || f.x > 800) f.vx = -f.vx;
+                    if (f.y < 150 || f.y > 550) f.vy = -f.vy;
+                    ctx.fillStyle = "rgba(180, 255, 100, 0.8)";
+                    ctx.beginPath(); ctx.arc(f.x, f.y, 2.5, 0, Math.PI * 2); ctx.fill();
+                });
+            }
+        }
+
+        function drawHazardAndDefenseGraphics() {
+            let symbolSize = 80;
+            let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
+
+            if (hazardActive && activeHazard) {
+                let hazardDurationMs = 45000;
+                let elapsed = Date.now() - activeHazard.startTime;
+                let timeLeft = Math.max(0, hazardDurationMs - elapsed);
+                if (timeLeft === 0) {
+                    let penalty = Math.max(500, Math.floor(balance * activeHazard.penaltyPct));
+                    balance = Math.max(0, balance - penalty);
+                    bannerText = `TIME OUT! -$${penalty.toLocaleString()} PENALTY`;
+                    bannerAlpha = 4.0;
+                    hazardActive = false;
+                    activeHazard = null;
+                } else {
+                    ctx.save();
+                    let hx = reelStartX + activeHazard.reelIndex * 125 + 40;
+                    let hy = 140;
+
+                    let hImg = hazardImages[activeHazard.type];
+                    if (hImg) {
+                        drawTransparentImageRotated(hImg, hx - 22, hy - 22, 44, 44, false, 0);
+                    }
+
+                    ctx.fillStyle = "#333";
+                    ctx.fillRect(hx - 20, hy - 30, 40, 5);
+                    ctx.fillStyle = timeLeft < 6000 ? "#ff3333" : "#4dff4d";
+                    ctx.fillRect(hx - 20, hy - 30, 40 * (timeLeft / hazardDurationMs), 5);
+                    ctx.restore();
+                }
+            }
+
+            let aimX = reelStartX + currentAimReel * 125 + 40;
+            ctx.save();
+            ctx.strokeStyle = "#8b4513";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(aimX, 185, 45, Math.PI, 0, false);
+            ctx.stroke();
+            ctx.restore();
+
+            if (stoneProjectile) {
+                stoneProjectile.progress += 0.05;
+                let curX = stoneProjectile.startX + (stoneProjectile.targetX - stoneProjectile.startX) * stoneProjectile.progress;
+                let curY = stoneProjectile.startY + (stoneProjectile.targetY - stoneProjectile.startY) * stoneProjectile.progress - Math.sin(stoneProjectile.progress * Math.PI) * 75;
+                
+                stoneProjectile.trail.push({ x: curX, y: curY, alpha: 1.0 });
+
+                ctx.save();
+                stoneProjectile.trail.forEach((pt) => {
+                    pt.alpha -= 0.03;
+                    if (pt.alpha > 0) {
+                        ctx.fillStyle = `rgba(212, 163, 115, ${pt.alpha})`;
+                        ctx.beginPath();
+                        ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+                ctx.restore();
+
+                ctx.fillStyle = "#e0e0e0";
+                ctx.strokeStyle = "#222";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(curX, curY, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                if (stoneProjectile.progress >= 1.0) {
+                    if (activeHazard && activeHazard.reelIndex === currentAimReel) {
+                        let bonus = activeHazard.rewardBonus;
+                        balance += bonus;
+                        bannerText = `DIRECT HIT! BONUS +$${bonus.toLocaleString()}!`;
+                        bannerAlpha = 4.0;
+                        playSound(document.getElementById("hitSound"));
+                        playSound(winSound);
+                        triggerScreenShake(300, 6);
+                        
+                        let hitCardX = reelStartX + activeHazard.reelIndex * 125 + 40;
+                        for (let i = 0; i < 50; i++) {
+                            flowerParticles.push(new FlowerParticle(hitCardX, 240));
+                        }
+                        hazardActive = false;
+                        activeHazard = null;
+                    } else if (activeHazard) {
+                        bannerText = "MISSED TARGET! TRY AGAIN!";
+                        bannerAlpha = 3.0;
+                    }
+                    stoneProjectile = null;
+                }
+            }
+
+            ctx.save();
+            ctx.globalAlpha = (currentAimReel === 0) ? 0.25 : 0.95;
+            drawTransparentImageRotated(vineImg, leftVineBtnRect.x, leftVineBtnRect.y, leftVineBtnRect.w, leftVineBtnRect.h, false, 0);
+
+            ctx.globalAlpha = (currentAimReel === 2) ? 0.25 : 0.95;
+            drawTransparentImageRotated(vineImg, rightVineBtnRect.x, rightVineBtnRect.y, rightVineBtnRect.w, rightVineBtnRect.h, true, 0);
+            ctx.globalAlpha = 1.0;
+
+            // Fixed Slingshot Rotation Mapping: Left (-0.35), Center (0), Right (+0.35)
+            let slingshotAngle = (currentAimReel === 0) ? -0.35 : (currentAimReel === 2) ? 0.35 : 0;
+            drawTransparentImageRotated(slingshotImg, slingshotBtnRect.x - 5, slingshotBtnRect.y, 55, 60, false, slingshotAngle);
+            ctx.restore();
+        }
+
+        function drawPayoutOval() {
+            ctx.save();
+            ctx.fillStyle = "rgba(26, 10, 0, 0.82)";
+            ctx.strokeStyle = SOFT_GOLD;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(payoutOvalRect.x, payoutOvalRect.y, payoutOvalRect.w, payoutOvalRect.h, 30);
+            ctx.fill();
+            ctx.stroke();
+
+            drawOutlinedText("Treasures", payoutOvalRect.x + 95, payoutOvalRect.y + 18, "15px Arial bold", SOFT_GOLD);
+            drawOutlinedText("Hazards", payoutOvalRect.x + 270, payoutOvalRect.y + 18, "15px Arial bold", SOFT_GOLD);
+
+            let rowY = [payoutOvalRect.y + 42, payoutOvalRect.y + 66, payoutOvalRect.y + 90, payoutOvalRect.y + 114];
+
+            ctx.drawImage(shibaImg, payoutOvalRect.x + 20, rowY[0] - 10, 20, 20);
+            drawOutlinedText("3x Shiba - $100,000", payoutOvalRect.x + 85, rowY[0], "10px Arial bold", WHITE, DARK_BROWN, "left");
+
+            ctx.drawImage(jungleImg, payoutOvalRect.x + 20, rowY[1] - 10, 20, 20);
+            drawOutlinedText("3x All - $75,000", payoutOvalRect.x + 85, rowY[1], "10px Arial bold", WHITE, DARK_BROWN, "left");
+
+            ctx.drawImage(monkeyImg, payoutOvalRect.x + 20, rowY[2] - 10, 20, 20);
+            drawOutlinedText("3x Any - $50,000", payoutOvalRect.x + 85, rowY[2], "10px Arial bold", WHITE, DARK_BROWN, "left");
+
+            ctx.drawImage(tigerImg, payoutOvalRect.x + 20, rowY[3] - 10, 20, 20);
+            drawOutlinedText("2x Any - $25,000", payoutOvalRect.x + 85, rowY[3], "10px Arial bold", WHITE, DARK_BROWN, "left");
+
+            let hazX = payoutOvalRect.x + 203;
+            drawOutlinedText("Jaguar Trap", hazX + 25, rowY[0], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
+            drawOutlinedText("-1%", hazX + 130, rowY[0], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
+            drawOutlinedText("Venom Vine", hazX + 25, rowY[1], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
+            drawOutlinedText("-5%", hazX + 130, rowY[1], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
+            drawOutlinedText("Quicksand", hazX + 25, rowY[2], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
+            drawOutlinedText("-10%", hazX + 130, rowY[2], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
+            drawOutlinedText("Temple Curse", hazX + 25, rowY[3], "11px Arial bold", "#ff4d4d", DARK_BROWN, "left");
+            drawOutlinedText("-15%", hazX + 130, rowY[3], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
+
+            ctx.restore();
+        }
+
+        function drawBetSliderOval() {
+            ctx.save();
+            ctx.fillStyle = "rgba(26, 10, 0, 0.82)";
+            ctx.strokeStyle = SOFT_GOLD;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(betSliderOvalRect.x, betSliderOvalRect.y, betSliderOvalRect.w, betSliderOvalRect.h, 30);
+            ctx.fill();
+            ctx.stroke();
+
+            let label = isBetAllActive ? `Bet: ALL ($${currentBet.toLocaleString()})` : `Bet: $${currentBet.toLocaleString()}`;
+            drawOutlinedText(label, betSliderOvalRect.x + 180, betSliderOvalRect.y + 22, "15px Arial bold", SOFT_GOLD);
+
+            let nodes = getBetArcNodes();
+            betSteps.forEach((val, idx) => {
+                let node = nodes[idx];
+                let isSelected = (idx === betIndex) && !isBetAllActive;
+                let displayVal = val >= 1000000 ? `$${val/1000000}M` : `$${val/1000}k`;
+                drawOutlinedText(displayVal, node.x, node.y + 22, "11px Arial bold", isSelected ? SOFT_GOLD : "#aaa");
+
+                ctx.save();
+                if (!isSelected) ctx.globalAlpha = 0.5;
+                ctx.drawImage(shibaImg, node.x - 14, node.y - 14, 28, 28);
+                ctx.restore();
+            });
+
+            let coin = nodes[4];
+            ctx.fillStyle = isBetAllActive ? "#ffd166" : "#3d3023";
+            ctx.strokeStyle = isBetAllActive ? "#fff" : SOFT_GOLD;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(coin.x, coin.y, 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            drawOutlinedText("ALL", coin.x, coin.y, "11px Arial bold", DARK_BROWN, SOFT_GOLD);
+            drawOutlinedText("Bet All", coin.x, coin.y + 26, "10px Arial bold", isBetAllActive ? SOFT_GOLD : "#aaa");
+
+            ctx.restore();
+        }
+
+        function drawWoodenButton(rect, text, isCircle = false) {
+            ctx.save();
+            ctx.fillStyle = "#8b4513";
+            ctx.strokeStyle = DARK_BROWN;
+            ctx.lineWidth = 3;
+
+            if (isCircle) {
+                let radius = rect.w / 2;
+                ctx.beginPath();
+                ctx.arc(rect.x + radius, rect.y + radius, radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                drawOutlinedText(text, rect.x + radius, rect.y + radius, "13px Arial bold", SOFT_GOLD);
+            } else {
+                ctx.beginPath();
+                ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 15);
+                ctx.fill();
+                ctx.stroke();
+                drawOutlinedText(text, rect.x + rect.w / 2, rect.y + rect.h / 2, "16px Arial bold", SOFT_GOLD);
+            }
+            ctx.restore();
+        }
+
+        canvas.addEventListener("pointerdown", (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            if (x >= playlistDropdownRect.x && x <= playlistDropdownRect.x + playlistDropdownRect.w && y >= playlistDropdownRect.y && y <= playlistDropdownRect.y + playlistDropdownRect.h) {
+                playlistDropdownOpen = !playlistDropdownOpen;
+                playSound(clickSound);
+                return;
+            }
+
+            if (playlistDropdownOpen) {
+                if (x >= playlistDropdownRect.x && x <= playlistDropdownRect.x + playlistDropdownRect.w && y >= playlistDropdownRect.y + 32 && y <= playlistDropdownRect.y + 32 + (trackNames.length * 30)) {
+                    let clickedIdx = Math.floor((y - (playlistDropdownRect.y + 32)) / 30);
+                    if (clickedIdx >= 0 && clickedIdx < soundtracks.length) {
+                        soundtracks.forEach(t => { if(t) t.pause(); });
+                        currentTrackIndex = clickedIdx;
+                        musicPlaying = true;
+                        let activeTrack = soundtracks[currentTrackIndex];
+                        if (activeTrack) { activeTrack.currentTime = 0; activeTrack.play().catch(e => {}); }
+                        updateAudioVolumes();
+                    }
+                    playlistDropdownOpen = false;
+                    playSound(clickSound);
+                    return;
+                } else {
+                    playlistDropdownOpen = false;
+                }
+            }
+
+            if (x >= timeToggleRect.x && x <= timeToggleRect.x + timeToggleRect.w && y >= timeToggleRect.y && y <= timeToggleRect.y + timeToggleRect.h) {
+                timeModeIndex = (timeModeIndex + 1) % timeModes.length;
+                playSound(clickSound);
+                return;
+            }
+
+            if (x >= musicMuteRect.x && x <= musicMuteRect.x + musicMuteRect.w && y >= musicMuteRect.y && y <= musicMuteRect.y + musicMuteRect.h) {
+                musicMuted = !musicMuted;
+                if (!musicMuted && !musicPlaying) {
+                    musicPlaying = true;
+                    soundtracks[currentTrackIndex].play().catch(e=>{});
+                }
+                updateAudioVolumes();
+                playSound(clickSound);
+                return;
+            }
+
+            if (x >= musicSliderRect.x && x <= musicSliderRect.x + musicSliderRect.w && y >= musicSliderRect.y && y <= musicSliderRect.y + musicSliderRect.h) {
+                musicVolume = Math.max(0, Math.min(1, (x - musicSliderRect.x) / musicSliderRect.w));
+                updateAudioVolumes();
+                return;
+            }
+
+            if (x >= soundsMuteRect.x && x <= soundsMuteRect.x + soundsMuteRect.w && y >= soundsMuteRect.y && y <= soundsMuteRect.y + soundsMuteRect.h) {
+                soundsMuted = !soundsMuted;
+                updateAudioVolumes();
+                playSound(clickSound);
+                return;
+            }
+
+            if (x >= soundsSliderRect.x && x <= soundsSliderRect.x + soundsSliderRect.w && y >= soundsSliderRect.y && y <= soundsSliderRect.y + soundsSliderRect.h) {
+                soundsVolume = Math.max(0, Math.min(1, (x - soundsSliderRect.x) / soundsSliderRect.w));
+                updateAudioVolumes();
+                return;
+            }
+
+            if (x >= leftVineBtnRect.x && x <= leftVineBtnRect.x + leftVineBtnRect.w && y >= leftVineBtnRect.y && y <= leftVineBtnRect.y + leftVineBtnRect.h) {
+                if (currentAimReel > 0) currentAimReel--;
+                playSound(clickSound);
+                return;
+            }
+            if (x >= rightVineBtnRect.x && x <= rightVineBtnRect.x + rightVineBtnRect.w && y >= rightVineBtnRect.y && y <= rightVineBtnRect.y + rightVineBtnRect.h) {
+                if (currentAimReel < 2) currentAimReel++;
+                playSound(clickSound);
+                return;
+            }
+
+            if (x >= slingshotBtnRect.x && x <= slingshotBtnRect.x + slingshotBtnRect.w && y >= slingshotBtnRect.y && y <= slingshotBtnRect.y + slingshotBtnRect.h) {
+                playSound(clickSound);
+                let symbolSize = 80;
+                let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
+                let targetX = reelStartX + currentAimReel * 125 + 40;
+                
+                stoneProjectile = {
+                    startX: slingshotBtnRect.x + 22,
+                    startY: slingshotBtnRect.y,
+                    targetX: targetX,
+                    targetY: 185,
+                    progress: 0,
+                    trail: []
+                };
+                return;
+            }
+
+            let nodes = getBetArcNodes();
+            if (Math.hypot(x - nodes[4].x, y - nodes[4].y) <= 22) {
+                isBetAllActive = !isBetAllActive;
+                currentBet = isBetAllActive ? balance : betSteps[betIndex];
+                playSound(clickSound);
+                return;
+            }
+
+            if (x >= betSliderOvalRect.x && x <= betSliderOvalRect.x + betSliderOvalRect.w && y >= betSliderOvalRect.y && y <= betSliderOvalRect.y + betSliderOvalRect.h) {
+                let closest = 0, minD = Infinity;
+                nodes.forEach((n, idx) => {
+                    let d = Math.hypot(x - n.x, y - n.y);
+                    if (d < minD) { minD = d; closest = idx; }
+                });
+                if (closest < 4 && balance >= betSteps[closest]) {
+                    isBetAllActive = false;
+                    betIndex = closest;
+                    currentBet = betSteps[betIndex];
+                    playSound(clickSound);
+                }
+                return;
+            }
+
+            if (!spinning && !isGameOver && x >= spinPlankRect.x && x <= spinPlankRect.x + spinPlankRect.w && y >= spinPlankRect.y && y <= spinPlankRect.y + spinPlankRect.h) {
+                if (balance < currentBet) return;
+                balance -= currentBet;
+                spinning = true;
+                hazardActive = false;
+                activeHazard = null;
+                stoneProjectile = null;
+                playSound(spinSound);
+
+                let timer = 0;
+                let interval = setInterval(() => {
+                    reels = [
+                        symbols[Math.floor(Math.random() * symbols.length)],
+                        symbols[Math.floor(Math.random() * symbols.length)],
+                        symbols[Math.floor(Math.random() * symbols.length)]
+                    ];
+                    timer += 50;
+                    if (timer >= 1000) {
+                        clearInterval(interval);
+                        spinning = false;
+
+                        let payout = 0;
+                        if (reels[0] === reels[1] && reels[1] === reels[2]) {
+                            if (reels[0] === "Shiba") payout = 100000;
+                            else if (reels[0] === "Jungle") payout = 75000;
+                            else payout = 50000;
+                        } else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) {
+                            payout = 25000;
+                        }
+
+                        if (payout > 0) {
+                            balance += payout;
+                            bannerText = `WIN! +$${payout.toLocaleString()}`;
+                            bannerAlpha = 4.0;
+                            playSound(winSound);
+                            triggerScreenShake(300, 6);
+                            for(let i=0; i<35; i++) flowerParticles.push(new FlowerParticle(400, 250));
+                        } else {
+                            if (Math.random() < 0.7) {
+                                let hazardTypes = ['jaguar', 'venomvine', 'quicksand', 'templecurse'];
+                                let chosenType = hazardTypes[Math.floor(Math.random() * hazardTypes.length)];
+                                let targetReel = Math.floor(Math.random() * 3);
+
+                                let penaltyPct = chosenType === 'jaguar' ? 0.01 : chosenType === 'venomvine' ? 0.05 : chosenType === 'quicksand' ? 0.10 : 0.15;
+                                let rewardBonus = chosenType === 'jaguar' ? 15000 : chosenType === 'venomvine' ? 25000 : chosenType === 'quicksand' ? 35000 : 50000;
+
+                                activeHazard = { 
+                                    type: chosenType, 
+                                    reelIndex: targetReel, 
+                                    penaltyPct: penaltyPct,
+                                    rewardBonus: rewardBonus,
+                                    startTime: Date.now() 
+                                };
+                                hazardActive = true;
+
+                                bannerText = `${chosenType.toUpperCase()} REEL ${targetReel + 1}`;
+                                bannerAlpha = 4.0;
+                                triggerScreenShake(400, 8);
+                            }
+                        }
+
+                        if (isBetAllActive) {
+                            isBetAllActive = false;
+                            currentBet = betSteps[betIndex];
+                        }
+
+                        if (balance > highscore) {
+                            highscore = balance;
+                            localStorage.setItem("jungle_highscore", highscore);
+                        }
+
+                        if (balance <= 0) {
+                            balance = 0;
+                            isGameOver = true;
+                            bannerText = "GAME OVER: OUT OF TREASURE";
+                            bannerAlpha = 5.0;
+                        }
+                    }
+                }, 50);
+                return;
+            }
+
+            if (x >= restartWheelRect.x && x <= restartWheelRect.x + restartWheelRect.w && y >= restartWheelRect.y && y <= restartWheelRect.y + restartWheelRect.h) {
+                balance = 100000;
+                isGameOver = false;
+                betIndex = 0;
+                currentBet = betSteps[betIndex];
+                isBetAllActive = false;
+                hazardActive = false;
+                activeHazard = null;
+                stoneProjectile = null;
+                playSound(clickSound);
+                return;
+            }
+        });
+
+        function gameLoop(currentTime) {
+            let dt = 1;
+            if (screenShakeTimer > 0) screenShakeTimer -= 16.67;
+
+            ctx.save();
+            if (screenShakeTimer > 0) {
+                let dx = (Math.random() - 0.5) * screenShakeIntensity;
+                let dy = (Math.random() - 0.5) * screenShakeIntensity;
+                ctx.translate(dx, dy);
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (bgImg.complete && bgImg.naturalWidth !== 0) {
+                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = "#1b4931";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            drawEnvironmentOverlay();
+
+            ctx.drawImage(shibaImg, logoRect.x, logoRect.y, logoRect.w, logoRect.h);
+
+            drawOutlinedText(`Highest Loot  $${highscore.toLocaleString()}`, 95, 28, "18px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
+            drawOutlinedText(`Treasure Hunt $${balance.toLocaleString()}`, 95, 55, "20px Arial bold", WHITE, DARK_BROWN, "left");
+
+            // --- CONTROL RACK ---
+            ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(musicMuteRect.x, musicMuteRect.y, musicMuteRect.w, musicMuteRect.h, 8); ctx.fill(); ctx.stroke();
+            ctx.drawImage(musicMuted ? muteImg : speakerImg, musicMuteRect.x + 4, musicMuteRect.y + 4, 24, 24);
+            ctx.fillStyle = "#1a0a00"; ctx.fillRect(musicSliderRect.x, musicSliderRect.y + 6, musicSliderRect.w, 4);
+            ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(musicSliderRect.x + (musicVolume * musicSliderRect.w), musicSliderRect.y + 8, 6, 0, Math.PI * 2); ctx.fill();
+            drawOutlinedText("MUSIC", musicMuteRect.x + 35, musicMuteRect.y - 6, "9px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
+
+            ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y, playlistDropdownRect.w, playlistDropdownRect.h, 8); ctx.fill(); ctx.stroke();
+            drawOutlinedText(`🎵 ${trackNames[currentTrackIndex].split(" ")[0]} ▾`, playlistDropdownRect.x + 57, playlistDropdownRect.y + 15, "11px Arial bold", SOFT_GOLD);
+
+            if (playlistDropdownOpen) {
+                ctx.fillStyle = "#1a0a00"; ctx.strokeStyle = SOFT_GOLD; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y + 35, playlistDropdownRect.w + 30, trackNames.length * 30, 8); ctx.fill(); ctx.stroke();
+                trackNames.forEach((name, idx) => {
+                    drawOutlinedText(name, playlistDropdownRect.x + 10, playlistDropdownRect.y + 50 + (idx * 30), "10px Arial", idx === currentTrackIndex ? SOFT_GOLD : WHITE, DARK_BROWN, "left");
+                });
+            }
+
+            ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(soundsMuteRect.x, soundsMuteRect.y, soundsMuteRect.w, soundsMuteRect.h, 8); ctx.fill(); ctx.stroke();
+            ctx.drawImage(soundsMuted ? muteImg : speakerImg, soundsMuteRect.x + 4, soundsMuteRect.y + 4, 24, 24);
+            ctx.fillStyle = "#1a0a00"; ctx.fillRect(soundsSliderRect.x, soundsSliderRect.y + 6, soundsSliderRect.w, 4);
+            ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(soundsSliderRect.x + (soundsVolume * soundsSliderRect.w), soundsSliderRect.y + 8, 6, 0, Math.PI * 2); ctx.fill();
+            drawOutlinedText("SOUNDS", soundsMuteRect.x + 35, soundsMuteRect.y - 6, "9px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
+
+            drawWoodenButton(timeToggleRect, timeModes[timeModeIndex]);
+
+            drawHazardAndDefenseGraphics();
+
+            const symbolSize = 80;
+            const reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
+            for (let i = 0; i < 3; i++) {
+                ctx.fillStyle = "#d2b48c";
+                ctx.strokeStyle = DARK_BROWN;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.roundRect(reelStartX + i * 125, 200, symbolSize, symbolSize, 15);
+                ctx.fill();
+                ctx.stroke();
+
+                let sym = reels[i];
+                if (symbolImages[sym] && symbolImages[sym].complete) {
+                    ctx.drawImage(symbolImages[sym], reelStartX + i * 125 + 5, 205, 70, 70);
+                }
+            }
+
+            if (bannerAlpha > 0) {
+                ctx.save();
+                ctx.globalAlpha = Math.min(1.0, bannerAlpha);
+                drawOutlinedText(bannerText, canvas.width / 2, 95, "18px Arial bold", SOFT_GOLD, DARK_BROWN);
+                ctx.restore();
+                bannerAlpha -= 0.003;
+            }
+
+            drawPayoutOval();
+            drawBetSliderOval();
+
+            drawWoodenButton(spinPlankRect, isGameOver ? "GAME OVER" : "SPIN TEMPLE");
+            drawWoodenButton(restartWheelRect, "Restart", true);
+
+            flowerParticles.forEach((fp, idx) => {
+                fp.update(dt);
+                fp.draw();
+                if (fp.alpha <= 0) flowerParticles.splice(idx, 1);
+            });
+
+            ctx.restore();
+            requestAnimationFrame(gameLoop);
+        }
+
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>

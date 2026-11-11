@@ -445,8 +445,8 @@
             drawTransparentImageRotated(vineImg, rightVineBtnRect.x, rightVineBtnRect.y, rightVineBtnRect.w, rightVineBtnRect.h, true, 0);
             ctx.globalAlpha = 1.0;
 
-            // Fixed Slingshot Rotation Mapping: Left (-0.35), Center (0), Right (+0.35)
-            let slingshotAngle = (currentAimReel === 0) ? -0.35 : (currentAimReel === 2) ? 0.35 : 0;
+            // Perfectly balanced slingshot artwork rotation: Left (-0.60), Center (-0.25), Right (+0.15)
+            let slingshotAngle = (currentAimReel === 0) ? -0.60 : (currentAimReel === 2) ? 0.15 : -0.25;
             drawTransparentImageRotated(slingshotImg, slingshotBtnRect.x - 5, slingshotBtnRect.y, 55, 60, false, slingshotAngle);
             ctx.restore();
         }
@@ -485,7 +485,7 @@
             drawOutlinedText("-5%", hazX + 130, rowY[1], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
             drawOutlinedText("Quicksand", hazX + 25, rowY[2], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
             drawOutlinedText("-10%", hazX + 130, rowY[2], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
-            drawOutlinedText("Temple Curse", hazX + 25, rowY[3], "11px Arial bold", "#ff4d4d", DARK_BROWN, "left");
+            drawOutlinedText("Temple Curse", hazX + 25, rowY[3], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
             drawOutlinedText("-15%", hazX + 130, rowY[3], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
 
             ctx.restore();
