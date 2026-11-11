@@ -738,6 +738,26 @@
                     bannerAlpha = 3.0;
                     return;
                 }
+
+                // FIX: Apply hazard penalty immediately if user spins while hazard is active & ignored
+                if (hazardActive && activeHazard) {
+                    let penalty = Math.max(5000, Math.floor(balance * activeHazard.penaltyPct));
+                    balance = Math.max(0, balance - penalty);
+                    bannerText = `HAZARD IGNORED! -$${penalty.toLocaleString()} PENALTY`;
+                    bannerAlpha = 4.0;
+                    hazardActive = false;
+                    activeHazard = null;
+                    triggerScreenShake(300, 6);
+
+                    if (balance <= 0) {
+                        balance = 0;
+                        isGameOver = true;
+                        bannerText = "GAME OVER: OUT OF TREASURE";
+                        bannerAlpha = 5.0;
+                        return;
+                    }
+                }
+
                 balance -= currentBet;
                 spinning = true;
                 hazardActive = false;
@@ -859,10 +879,13 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (bgImg.complete && bgImg.naturalWidth !== 0) {
-                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.width * (canvas.height / canvas.width)); // fallback scaled or regular
             } else {
                 ctx.fillStyle = "#1b4931";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            if (bgImg.complete && bgImg.naturalWidth !== 0) {
+                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
             }
 
             drawEnvironmentOverlay();
@@ -872,7 +895,7 @@
             drawOutlinedText(`Highest Loot  $${highscore.toLocaleString()}`, 95, 38, "bold 18px Georgia", SOFT_GOLD, DARK_BROWN, "left");
             drawOutlinedText(`Treasure Hunt $${balance.toLocaleString()}`, 95, 65, "bold 20px Georgia", WHITE, DARK_BROWN, "left");
 
-            // --- AUDIO CONTROL RACK (SlotPirates Style Icons on Dark Brown Background) ---
+            // --- AUDIO CONTROL RACK ---
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(musicMuteRect.x, musicMuteRect.y, musicMuteRect.w, musicMuteRect.h, 6); ctx.fill(); ctx.stroke();
             drawSlotPiratesAudioIcon(musicMuteRect.x + 12, musicMuteRect.y + 12, 'music', musicMuted);
