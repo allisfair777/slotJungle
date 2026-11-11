@@ -270,7 +270,7 @@
             ctx.drawImage(tempCanvas, x, y, w, h);
         }
 
-        // Organic driftwood / weathered slice style matching Spin Temple
+// Stacked two-line antique carved wooden stamp style matching Spin Temple
 function drawSpinTempleStyleRestart(rect) {
     ctx.save();
     let cx = rect.x + rect.w / 2;
@@ -278,61 +278,63 @@ function drawSpinTempleStyleRestart(rect) {
     let rx = rect.w / 2;
     let ry = rect.h / 2;
 
-    // 1. Organic rough drop shadow / dirt base
-    ctx.fillStyle = "#0c0502";
+    // 1. Drop shadow / dirt base (rounded rectangular log shape like Spin Temple)
+    ctx.fillStyle = "#140702";
     ctx.beginPath();
-    ctx.ellipse(cx + 3, cy + 4, rx - 2, ry - 3, 0.08, 0, Math.PI * 2);
+    ctx.roundRect(rect.x + 2, rect.y + 3, rect.w, rect.h, 22);
     ctx.fill();
 
-    // 2. Heavy rough bark contour (irregular organic shape)
-    ctx.fillStyle = "#2e1405";
-    ctx.strokeStyle = "#120601";
+    // 2. Weathered bark border
+    let outerGrad = ctx.createLinearGradient(rect.x, rect.y, rect.x, rect.y + rect.h);
+    outerGrad.addColorStop(0, "#4a2408");
+    outerGrad.addColorStop(0.5, "#2d1404");
+    outerGrad.addColorStop(1, "#180a02");
+
+    ctx.fillStyle = outerGrad;
+    ctx.strokeStyle = "#0d0401";
     ctx.lineWidth = 3;
     ctx.beginPath();
-    // Slightly warp the points to look like cut organic timber
-    ctx.moveTo(cx - rx + 8, cy - ry + 12);
-    ctx.bezierCurveTo(cx - rx - 4, cy, cx - rx + 6, cy + ry - 8, cx, cy + ry - 4);
-    ctx.bezierCurveTo(cx + rx - 6, cy + ry - 2, cx + rx + 4, cy - 4, cx + rx - 10, cy - ry + 8);
-    ctx.bezierCurveTo(cx, cy - ry - 4, cx - rx + 15, cy - ry - 2, cx - rx + 8, cy - ry + 12);
-    ctx.closePath();
+    ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 20);
     ctx.fill();
     ctx.stroke();
 
-    // 3. Aged, weathered wood grain face
-    let woodGrad = ctx.createRadialGradient(cx - 10, cy - 6, 8, cx, cy, rx);
-    woodGrad.addColorStop(0, "#7a4a22");   // warm aged center
-    woodGrad.addColorStop(0.5, "#522c10"); // weathered mid-tone
-    woodGrad.addColorStop(1, "#281204");   // dark charred edge
+    // 3. Inner wood face gradient
+    let faceGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, rx);
+    faceGrad.addColorStop(0, "#8c5520");
+    faceGrad.addColorStop(0.6, "#542f10");
+    faceGrad.addColorStop(1, "#281203");
 
-    ctx.fillStyle = woodGrad;
-    ctx.strokeStyle = "#1f0d03";
+    ctx.fillStyle = faceGrad;
+    ctx.strokeStyle = "#1a0b02";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(cx, cy, rx - 7, ry - 7, 0.04, 0, Math.PI * 2);
+    ctx.roundRect(rect.x + 6, rect.y + 6, rect.w - 12, rect.h - 12, 14);
     ctx.fill();
     ctx.stroke();
 
-    // 4. Irregular wood grain texture lines & knots
-    ctx.strokeStyle = "rgba(15, 6, 1, 0.55)";
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.arc(cx - 12, cy + 4, rx * 0.55, -0.8, 1.2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(cx + 18, cy - 6, rx * 0.45, 2.0, 4.2);
-    ctx.stroke();
-
-    // 5. Weathered golden stamp text for RESTART
+    // 4. Stacked weathered golden text matching Spin Temple font layout ("RE" over "START")
     ctx.save();
-    ctx.shadowColor = "#000000";
-    ctx.shadowBlur = 6;
-    ctx.shadowOffsetX = 1;
-    ctx.shadowOffsetY = 2;
-    drawOutlinedText("RESTART", cx, cy + 1, "bold 14px Georgia", "#e8b845", "#1a0801");
-    ctx.restore();
+    ctx.font = "bold 15px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 3.5;
 
+    // Top Line: RE
+    ctx.strokeStyle = "#120501";
+    ctx.strokeText("RE", cx, cy - 9);
+    ctx.fillStyle = "#f5cb5c";
+    ctx.fillText("RE", cx, cy - 9);
+
+    // Bottom Line: START
+    ctx.strokeStyle = "#120501";
+    ctx.strokeText("START", cx, cy + 9);
+    ctx.fillStyle = "#f5cb5c";
+    ctx.fillText("START", cx, cy + 9);
+    
+    ctx.restore();
     ctx.restore();
 }
+
 
         class FlowerParticle {
             constructor(x, y) {
@@ -343,7 +345,7 @@ function drawSpinTempleStyleRestart(rect) {
                 this.rot = Math.random() * Math.PI;
                 this.vRot = (Math.random() - 0.5) * 0.1;
                 this.alpha = 1.0;
-                this.life = 160;
+                this.life = 120;
                 let colors = ["#ff70a6", "#ff9770", "#ffd670", "#e9ff70", "#70d6ff"];
                 this.color = colors[Math.floor(Math.random() * colors.length)];
                 this.size = Math.random() * 5 + 4;
