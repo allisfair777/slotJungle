@@ -270,15 +270,13 @@
             ctx.drawImage(tempCanvas, x, y, w, h);
         }
 
-// Stacked two-line antique carved wooden stamp style matching Spin Temple
+// Single-line carved wooden stamp style matching Spin Temple font and proportions
 function drawSpinTempleStyleRestart(rect) {
     ctx.save();
     let cx = rect.x + rect.w / 2;
     let cy = rect.y + rect.h / 2;
-    let rx = rect.w / 2;
-    let ry = rect.h / 2;
 
-    // 1. Drop shadow / dirt base (rounded rectangular log shape like Spin Temple)
+    // 1. Drop shadow / dirt base (rounded rectangular log shape matching Spin Temple)
     ctx.fillStyle = "#140702";
     ctx.beginPath();
     ctx.roundRect(rect.x + 2, rect.y + 3, rect.w, rect.h, 22);
@@ -299,7 +297,7 @@ function drawSpinTempleStyleRestart(rect) {
     ctx.stroke();
 
     // 3. Inner wood face gradient
-    let faceGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, rx);
+    let faceGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, rect.w / 2);
     faceGrad.addColorStop(0, "#8c5520");
     faceGrad.addColorStop(0.6, "#542f10");
     faceGrad.addColorStop(1, "#281203");
@@ -312,29 +310,28 @@ function drawSpinTempleStyleRestart(rect) {
     ctx.fill();
     ctx.stroke();
 
-    // 4. Stacked weathered golden text matching Spin Temple font layout ("RE" over "START")
+    // 4. Single-line antique golden carved text matching Spin Temple font style
     ctx.save();
     ctx.font = "bold 15px Georgia, serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.lineWidth = 3.5;
 
-    // Top Line: RE
     ctx.strokeStyle = "#120501";
-    ctx.strokeText("RE", cx, cy - 9);
-    ctx.fillStyle = "#f5cb5c";
-    ctx.fillText("RE", cx, cy - 9);
-
-    // Bottom Line: START
-    ctx.strokeStyle = "#120501";
-    ctx.strokeText("START", cx, cy + 9);
-    ctx.fillStyle = "#f5cb5c";
-    ctx.fillText("START", cx, cy + 9);
+    ctx.strokeText("RESTART", cx, cy);
+    
+    // Golden gradient text fill for that metallic/carved look
+    let textGrad = ctx.createLinearGradient(cx, cy - 8, cx, cy + 8);
+    textGrad.addColorStop(0, "#ffeb80");
+    textGrad.addColorStop(0.5, "#f5cb5c");
+    textGrad.addColorStop(1, "#c29b2e");
+    
+    ctx.fillStyle = textGrad;
+    ctx.fillText("RESTART", cx, cy);
     
     ctx.restore();
     ctx.restore();
 }
-
 
         class FlowerParticle {
             constructor(x, y) {
