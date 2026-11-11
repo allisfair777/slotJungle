@@ -19,7 +19,7 @@
             height: 100vh;
             overflow: hidden;
             touch-action: none;
-            font-family: Arial, sans-serif;
+            font-family: 'Georgia', 'Arial', sans-serif;
         }
         #game-container {
             position: relative;
@@ -110,14 +110,17 @@
             "Jungle": jungleImg
         };
 
-        const SOFT_GOLD = "#d4a373";
+        const SOFT_GOLD = "#ffd700";
+        const LIGHT_GOLD = "#ffeaa7";
         const DARK_BROWN = "#1a0a00";
         const WHITE = "#ffffff";
 
-        let balance = 100000;
-        let highscore = parseInt(localStorage.getItem("jungle_highscore")) || 100000;
+        // Initial Balance & Highscore updated to $500,000 like Slot Pirates
+        let balance = 500000;
+        let highscore = parseInt(localStorage.getItem("jungle_highscore")) || 500000;
         
-        const betSteps = [1000, 5000, 10000, 25000];
+        // Bet Steps aligned with Slot Pirates: 100k, 250k, 500k, 1M
+        const betSteps = [100000, 250000, 500000, 1000000];
         let betIndex = 0;
         let currentBet = betSteps[betIndex];
         let isBetAllActive = false;
@@ -160,20 +163,20 @@
             fireflies.push({ x: Math.random() * 800, y: Math.random() * 400 + 150, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, alpha: Math.random() });
         }
 
-        // Layout Rectangles
-        const logoRect = { x: 25, y: 15, w: 55, h: 55 };
+        // Layout Rectangles (Top lines moved down from top edge)
+        const logoRect = { x: 25, y: 25, w: 55, h: 55 };
         const payoutOvalRect = { x: 25, y: 295, w: 365, h: 140 };
         const betSliderOvalRect = { x: 410, y: 295, w: 365, h: 140 };
         const spinPlankRect = { x: 550, y: 455, w: 225, h: 65 };
         const restartWheelRect = { x: 25, y: 455, w: 65, h: 65 };
         
-        const musicMuteRect = { x: 550, y: 15, w: 32, h: 32 };
-        const musicSliderRect = { x: 590, y: 23, w: 75, h: 16 };
-        const playlistDropdownRect = { x: 550, y: 55, w: 115, h: 30 };
+        const musicMuteRect = { x: 550, y: 25, w: 32, h: 32 };
+        const musicSliderRect = { x: 590, y: 33, w: 75, h: 16 };
+        const playlistDropdownRect = { x: 550, y: 65, w: 115, h: 30 };
 
-        const soundsMuteRect = { x: 685, y: 15, w: 32, h: 32 };
-        const soundsSliderRect = { x: 725, y: 23, w: 50, h: 16 };
-        const timeToggleRect = { x: 685, y: 55, w: 90, h: 30 };
+        const soundsMuteRect = { x: 685, y: 25, w: 32, h: 32 };
+        const soundsSliderRect = { x: 725, y: 33, w: 50, h: 16 };
+        const timeToggleRect = { x: 685, y: 65, w: 90, h: 30 };
 
         const leftVineBtnRect = { x: 325, y: 455, w: 45, h: 65 };
         const slingshotBtnRect = { x: 380, y: 455, w: 45, h: 65 };
@@ -353,7 +356,7 @@
                 let elapsed = Date.now() - activeHazard.startTime;
                 let timeLeft = Math.max(0, hazardDurationMs - elapsed);
                 if (timeLeft === 0) {
-                    let penalty = Math.max(500, Math.floor(balance * activeHazard.penaltyPct));
+                    let penalty = Math.max(5000, Math.floor(balance * activeHazard.penaltyPct));
                     balance = Math.max(0, balance - penalty);
                     bannerText = `TIME OUT! -$${penalty.toLocaleString()} PENALTY`;
                     bannerAlpha = 4.0;
@@ -380,7 +383,7 @@
             // Small brown aim indicator dot right above the targeted reel card
             let aimX = reelStartX + currentAimReel * 125 + 40;
             ctx.save();
-            ctx.fillStyle = "#8b4513";
+            ctx.fillStyle = SOFT_GOLD;
             ctx.strokeStyle = DARK_BROWN;
             ctx.lineWidth = 1.5;
             ctx.beginPath();
@@ -400,7 +403,7 @@
                 stoneProjectile.trail.forEach((pt) => {
                     pt.alpha -= 0.03;
                     if (pt.alpha > 0) {
-                        ctx.fillStyle = `rgba(212, 163, 115, ${pt.alpha})`;
+                        ctx.fillStyle = `rgba(255, 215, 0, ${pt.alpha})`;
                         ctx.beginPath();
                         ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
                         ctx.fill();
@@ -453,65 +456,68 @@
             ctx.restore();
         }
 
+        // Lighter panel background for iPhone legibility
         function drawPayoutOval() {
             ctx.save();
-            ctx.fillStyle = "rgba(26, 10, 0, 0.82)";
+            ctx.fillStyle = "rgba(60, 35, 12, 0.72)";
             ctx.strokeStyle = SOFT_GOLD;
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
-            ctx.roundRect(payoutOvalRect.x, payoutOvalRect.y, payoutOvalRect.w, payoutOvalRect.h, 30);
+            ctx.roundRect(payoutOvalRect.x, payoutOvalRect.y, payoutOvalRect.w, payoutOvalRect.h, 25);
             ctx.fill();
             ctx.stroke();
 
-            drawOutlinedText("Treasures", payoutOvalRect.x + 95, payoutOvalRect.y + 18, "15px Arial bold", SOFT_GOLD);
-            drawOutlinedText("Hazards", payoutOvalRect.x + 270, payoutOvalRect.y + 18, "15px Arial bold", SOFT_GOLD);
+            drawOutlinedText("Treasures", payoutOvalRect.x + 95, payoutOvalRect.y + 18, "bold 15px Georgia", SOFT_GOLD);
+            drawOutlinedText("Hazards", payoutOvalRect.x + 270, payoutOvalRect.y + 18, "bold 15px Georgia", SOFT_GOLD);
 
             let rowY = [payoutOvalRect.y + 42, payoutOvalRect.y + 66, payoutOvalRect.y + 90, payoutOvalRect.y + 114];
 
+            // Updated Scaled Payouts matching Slot Pirates
             ctx.drawImage(shibaImg, payoutOvalRect.x + 20, rowY[0] - 10, 20, 20);
-            drawOutlinedText("3x Shiba - $100,000", payoutOvalRect.x + 85, rowY[0], "10px Arial bold", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("Jackpot - $50,000,000", payoutOvalRect.x + 85, rowY[0], "bold 10px Georgia", WHITE, DARK_BROWN, "left");
 
             ctx.drawImage(jungleImg, payoutOvalRect.x + 20, rowY[1] - 10, 20, 20);
-            drawOutlinedText("3x All - $75,000", payoutOvalRect.x + 85, rowY[1], "10px Arial bold", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("3x All - $20,000,000", payoutOvalRect.x + 85, rowY[1], "bold 10px Georgia", WHITE, DARK_BROWN, "left");
 
             ctx.drawImage(monkeyImg, payoutOvalRect.x + 20, rowY[2] - 10, 20, 20);
-            drawOutlinedText("3x Any - $50,000", payoutOvalRect.x + 85, rowY[2], "10px Arial bold", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("3x Any - $10,000,000", payoutOvalRect.x + 85, rowY[2], "bold 10px Georgia", WHITE, DARK_BROWN, "left");
 
             ctx.drawImage(tigerImg, payoutOvalRect.x + 20, rowY[3] - 10, 20, 20);
-            drawOutlinedText("2x Any - $25,000", payoutOvalRect.x + 85, rowY[3], "10px Arial bold", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("2x Any - $5,000,000", payoutOvalRect.x + 85, rowY[3], "bold 10px Georgia", WHITE, DARK_BROWN, "left");
 
             let hazX = payoutOvalRect.x + 203;
-            drawOutlinedText("Jaguar Trap", hazX + 25, rowY[0], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
-            drawOutlinedText("-1%", hazX + 130, rowY[0], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
-            drawOutlinedText("Venom Vine", hazX + 25, rowY[1], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
-            drawOutlinedText("-5%", hazX + 130, rowY[1], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
-            drawOutlinedText("Quicksand", hazX + 25, rowY[2], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
-            drawOutlinedText("-10%", hazX + 130, rowY[2], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
-            drawOutlinedText("Temple Curse", hazX + 25, rowY[3], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
-            drawOutlinedText("-15%", hazX + 130, rowY[3], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
+            drawOutlinedText("Jaguar Trap", hazX + 25, rowY[0], "bold 11px Georgia", "#ffb3b3", DARK_BROWN, "left");
+            drawOutlinedText("-1%", hazX + 130, rowY[0], "bold 11px Georgia", "#ff6666", DARK_BROWN, "right");
+            drawOutlinedText("Venom Vine", hazX + 25, rowY[1], "bold 11px Georgia", "#ffb3b3", DARK_BROWN, "left");
+            drawOutlinedText("-5%", hazX + 130, rowY[1], "bold 11px Georgia", "#ff6666", DARK_BROWN, "right");
+            drawOutlinedText("Quicksand", hazX + 25, rowY[2], "bold 11px Georgia", "#ffb3b3", DARK_BROWN, "left");
+            drawOutlinedText("-10%", hazX + 130, rowY[2], "bold 11px Georgia", "#ff6666", DARK_BROWN, "right");
+            drawOutlinedText("Temple Curse", hazX + 25, rowY[3], "bold 11px Georgia", "#ffb3b3", DARK_BROWN, "left");
+            drawOutlinedText("-15%", hazX + 130, rowY[3], "bold 11px Georgia", "#ff6666", DARK_BROWN, "right");
 
             ctx.restore();
         }
 
+        // Lighter panel background for iPhone legibility
         function drawBetSliderOval() {
             ctx.save();
-            ctx.fillStyle = "rgba(26, 10, 0, 0.82)";
+            ctx.fillStyle = "rgba(60, 35, 12, 0.72)";
             ctx.strokeStyle = SOFT_GOLD;
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
-            ctx.roundRect(betSliderOvalRect.x, betSliderOvalRect.y, betSliderOvalRect.w, betSliderOvalRect.h, 30);
+            ctx.roundRect(betSliderOvalRect.x, betSliderOvalRect.y, betSliderOvalRect.w, betSliderOvalRect.h, 25);
             ctx.fill();
             ctx.stroke();
 
             let label = isBetAllActive ? `Bet: ALL ($${currentBet.toLocaleString()})` : `Bet: $${currentBet.toLocaleString()}`;
-            drawOutlinedText(label, betSliderOvalRect.x + 180, betSliderOvalRect.y + 22, "15px Arial bold", SOFT_GOLD);
+            drawOutlinedText(label, betSliderOvalRect.x + 180, betSliderOvalRect.y + 22, "bold 15px Georgia", SOFT_GOLD);
 
             let nodes = getBetArcNodes();
             betSteps.forEach((val, idx) => {
                 let node = nodes[idx];
                 let isSelected = (idx === betIndex) && !isBetAllActive;
                 let displayVal = val >= 1000000 ? `$${val/1000000}M` : `$${val/1000}k`;
-                drawOutlinedText(displayVal, node.x, node.y + 22, "11px Arial bold", isSelected ? SOFT_GOLD : "#aaa");
+                drawOutlinedText(displayVal, node.x, node.y + 22, "bold 11px Georgia", isSelected ? SOFT_GOLD : "#ddd");
 
                 ctx.save();
                 if (!isSelected) ctx.globalAlpha = 0.5;
@@ -520,23 +526,29 @@
             });
 
             let coin = nodes[4];
-            ctx.fillStyle = isBetAllActive ? "#ffd166" : "#3d3023";
+            ctx.fillStyle = isBetAllActive ? "#ffd166" : "#4a2d11";
             ctx.strokeStyle = isBetAllActive ? "#fff" : SOFT_GOLD;
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(coin.x, coin.y, 20, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-            drawOutlinedText("ALL", coin.x, coin.y, "11px Arial bold", DARK_BROWN, SOFT_GOLD);
-            drawOutlinedText("Bet All", coin.x, coin.y + 26, "10px Arial bold", isBetAllActive ? SOFT_GOLD : "#aaa");
+            drawOutlinedText("ALL", coin.x, coin.y, "bold 11px Georgia", DARK_BROWN, SOFT_GOLD);
+            drawOutlinedText("Bet All", coin.x, coin.y + 26, "bold 10px Georgia", isBetAllActive ? SOFT_GOLD : "#ddd");
 
             ctx.restore();
         }
 
         function drawWoodenButton(rect, text, isCircle = false) {
             ctx.save();
-            ctx.fillStyle = "#8b4513";
-            ctx.strokeStyle = DARK_BROWN;
+            // Richer wooden button gradient fill
+            let grad = ctx.createLinearGradient(rect.x, rect.y, rect.x, rect.y + rect.h);
+            grad.addColorStop(0, "#a85d22");
+            grad.addColorStop(0.5, "#7a3e10");
+            grad.addColorStop(1, "#4a2205");
+
+            ctx.fillStyle = grad;
+            ctx.strokeStyle = SOFT_GOLD;
             ctx.lineWidth = 3;
 
             if (isCircle) {
@@ -545,13 +557,13 @@
                 ctx.arc(rect.x + radius, rect.y + radius, radius, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
-                drawOutlinedText(text, rect.x + radius, rect.y + radius, "13px Arial bold", SOFT_GOLD);
+                drawOutlinedText(text, rect.x + radius, rect.y + radius, "bold 13px Georgia", SOFT_GOLD);
             } else {
                 ctx.beginPath();
-                ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 15);
+                ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 16);
                 ctx.fill();
                 ctx.stroke();
-                drawOutlinedText(text, rect.x + rect.w / 2, rect.y + rect.h / 2, "16px Arial bold", SOFT_GOLD);
+                drawOutlinedText(text, rect.x + rect.w / 2, rect.y + rect.h / 2, "bold 16px Georgia", LIGHT_GOLD);
             }
             ctx.restore();
         }
@@ -650,14 +662,18 @@
                 return;
             }
 
+            // Bet All Button Toggle
             let nodes = getBetArcNodes();
             if (Math.hypot(x - nodes[4].x, y - nodes[4].y) <= 22) {
-                isBetAllActive = !isBetAllActive;
-                currentBet = isBetAllActive ? balance : betSteps[betIndex];
-                playSound(clickSound);
+                if (balance > 0) {
+                    isBetAllActive = !isBetAllActive;
+                    currentBet = isBetAllActive ? balance : betSteps[betIndex];
+                    playSound(clickSound);
+                }
                 return;
             }
 
+            // Bet Step Selection Validation
             if (x >= betSliderOvalRect.x && x <= betSliderOvalRect.x + betSliderOvalRect.w && y >= betSliderOvalRect.y && y <= betSliderOvalRect.y + betSliderOvalRect.h) {
                 let closest = 0, minD = Infinity;
                 nodes.forEach((n, idx) => {
@@ -673,8 +689,13 @@
                 return;
             }
 
+            // Spin Button Action with Validation
             if (!spinning && !isGameOver && x >= spinPlankRect.x && x <= spinPlankRect.x + spinPlankRect.w && y >= spinPlankRect.y && y <= spinPlankRect.y + spinPlankRect.h) {
-                if (balance < currentBet) return;
+                if (balance < currentBet) {
+                    bannerText = "INSUFFICIENT FUNDS FOR BET!";
+                    bannerAlpha = 3.0;
+                    return;
+                }
                 balance -= currentBet;
                 spinning = true;
                 hazardActive = false;
@@ -696,16 +717,16 @@
 
                         let payout = 0;
                         if (reels[0] === reels[1] && reels[1] === reels[2]) {
-                            if (reels[0] === "Shiba") payout = 100000;
-                            else if (reels[0] === "Jungle") payout = 75000;
-                            else payout = 50000;
+                            if (reels[0] === "Shiba") payout = 50000000;
+                            else if (reels[0] === "Jungle") payout = 20000000;
+                            else payout = 10000000;
                         } else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) {
-                            payout = 25000;
+                            payout = 5000000;
                         }
 
                         if (payout > 0) {
                             balance += payout;
-                            bannerText = `WIN! +$${payout.toLocaleString()}`;
+                            bannerText = `JACKPOT WIN! +$${payout.toLocaleString()}`;
                             bannerAlpha = 4.0;
                             playSound(winSound);
                             triggerScreenShake(300, 6);
@@ -717,7 +738,7 @@
                                 let targetReel = Math.floor(Math.random() * 3);
 
                                 let penaltyPct = chosenType === 'jaguar' ? 0.01 : chosenType === 'venomvine' ? 0.05 : chosenType === 'quicksand' ? 0.10 : 0.15;
-                                let rewardBonus = chosenType === 'jaguar' ? 15000 : chosenType === 'venomvine' ? 25000 : chosenType === 'quicksand' ? 35000 : 50000;
+                                let rewardBonus = chosenType === 'jaguar' ? 100000 : chosenType === 'venomvine' ? 250000 : chosenType === 'quicksand' ? 500000 : 1000000;
 
                                 activeHazard = { 
                                     type: chosenType, 
@@ -736,7 +757,7 @@
 
                         if (isBetAllActive) {
                             isBetAllActive = false;
-                            currentBet = betSteps[betIndex];
+                            currentBet = balance >= betSteps[betIndex] ? betSteps[betIndex] : balance;
                         }
 
                         if (balance > highscore) {
@@ -755,8 +776,9 @@
                 return;
             }
 
+            // Restart Button (Resets to $500,000)
             if (x >= restartWheelRect.x && x <= restartWheelRect.x + restartWheelRect.w && y >= restartWheelRect.y && y <= restartWheelRect.y + restartWheelRect.h) {
-                balance = 100000;
+                balance = 500000;
                 isGameOver = false;
                 betIndex = 0;
                 currentBet = betSteps[betIndex];
@@ -793,35 +815,36 @@
 
             ctx.drawImage(shibaImg, logoRect.x, logoRect.y, logoRect.w, logoRect.h);
 
-            drawOutlinedText(`Highest Loot  $${highscore.toLocaleString()}`, 95, 28, "18px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
-            drawOutlinedText(`Treasure Hunt $${balance.toLocaleString()}`, 95, 55, "20px Arial bold", WHITE, DARK_BROWN, "left");
+            // Shifted top lines down for extra breathing room
+            drawOutlinedText(`Highest Loot  $${highscore.toLocaleString()}`, 95, 38, "bold 18px Georgia", SOFT_GOLD, DARK_BROWN, "left");
+            drawOutlinedText(`Treasure Hunt $${balance.toLocaleString()}`, 95, 65, "bold 20px Georgia", WHITE, DARK_BROWN, "left");
 
             // --- CONTROL RACK ---
-            ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
+            ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.roundRect(musicMuteRect.x, musicMuteRect.y, musicMuteRect.w, musicMuteRect.h, 8); ctx.fill(); ctx.stroke();
             ctx.drawImage(musicMuted ? muteImg : speakerImg, musicMuteRect.x + 4, musicMuteRect.y + 4, 24, 24);
             ctx.fillStyle = "#1a0a00"; ctx.fillRect(musicSliderRect.x, musicSliderRect.y + 6, musicSliderRect.w, 4);
             ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(musicSliderRect.x + (musicVolume * musicSliderRect.w), musicSliderRect.y + 8, 6, 0, Math.PI * 2); ctx.fill();
-            drawOutlinedText("MUSIC", musicMuteRect.x + 35, musicMuteRect.y - 6, "9px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
+            drawOutlinedText("MUSIC", musicMuteRect.x + 35, musicMuteRect.y - 6, "bold 9px Georgia", SOFT_GOLD, DARK_BROWN, "left");
 
-            ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
+            ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y, playlistDropdownRect.w, playlistDropdownRect.h, 8); ctx.fill(); ctx.stroke();
-            drawOutlinedText(`🎵 ${trackNames[currentTrackIndex].split(" ")[0]} ▾`, playlistDropdownRect.x + 57, playlistDropdownRect.y + 15, "11px Arial bold", SOFT_GOLD);
+            drawOutlinedText(`🎵 ${trackNames[currentTrackIndex].split(" ")[0]} ▾`, playlistDropdownRect.x + 57, playlistDropdownRect.y + 15, "bold 11px Georgia", SOFT_GOLD);
 
             if (playlistDropdownOpen) {
                 ctx.fillStyle = "#1a0a00"; ctx.strokeStyle = SOFT_GOLD; ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y + 35, playlistDropdownRect.w + 30, trackNames.length * 30, 8); ctx.fill(); ctx.stroke();
                 trackNames.forEach((name, idx) => {
-                    drawOutlinedText(name, playlistDropdownRect.x + 10, playlistDropdownRect.y + 50 + (idx * 30), "10px Arial", idx === currentTrackIndex ? SOFT_GOLD : WHITE, DARK_BROWN, "left");
+                    drawOutlinedText(name, playlistDropdownRect.x + 10, playlistDropdownRect.y + 50 + (idx * 30), "10px Georgia", idx === currentTrackIndex ? SOFT_GOLD : WHITE, DARK_BROWN, "left");
                 });
             }
 
-            ctx.fillStyle = "#8b4513"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
+            ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.roundRect(soundsMuteRect.x, soundsMuteRect.y, soundsMuteRect.w, soundsMuteRect.h, 8); ctx.fill(); ctx.stroke();
             ctx.drawImage(soundsMuted ? muteImg : speakerImg, soundsMuteRect.x + 4, soundsMuteRect.y + 4, 24, 24);
             ctx.fillStyle = "#1a0a00"; ctx.fillRect(soundsSliderRect.x, soundsSliderRect.y + 6, soundsSliderRect.w, 4);
             ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(soundsSliderRect.x + (soundsVolume * soundsSliderRect.w), soundsSliderRect.y + 8, 6, 0, Math.PI * 2); ctx.fill();
-            drawOutlinedText("SOUNDS", soundsMuteRect.x + 35, soundsMuteRect.y - 6, "9px Arial bold", SOFT_GOLD, DARK_BROWN, "left");
+            drawOutlinedText("SOUNDS", soundsMuteRect.x + 35, soundsMuteRect.y - 6, "bold 9px Georgia", SOFT_GOLD, DARK_BROWN, "left");
 
             drawWoodenButton(timeToggleRect, timeModes[timeModeIndex]);
 
@@ -847,7 +870,7 @@
             if (bannerAlpha > 0) {
                 ctx.save();
                 ctx.globalAlpha = Math.min(1.0, bannerAlpha);
-                drawOutlinedText(bannerText, canvas.width / 2, 95, "18px Arial bold", SOFT_GOLD, DARK_BROWN);
+                drawOutlinedText(bannerText, canvas.width / 2, 105, "bold 18px Georgia", SOFT_GOLD, DARK_BROWN);
                 ctx.restore();
                 bannerAlpha -= 0.003;
             }
