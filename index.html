@@ -94,7 +94,7 @@
 
         // Custom Button Images (Spin Temple & Restart)
         const spinBtnImg = new Image(); spinBtnImg.src = "spin.jpg";
-        const restartBtnImg = new Image(); restartBtnImg.src = "restart.jpg";
+        const restartBtnImg = new Image(); restartBtnImg.src = "restart_2.jpg";
 
         const hazardImages = {
             'jaguar': (() => { let img = new Image(); img.src = "jaguar.png"; return img; })(),
@@ -272,7 +272,9 @@
         }
 
         function drawSpinTempleStyleRestart(rect) {
-            drawCustomButtonImage(restartBtnImg, rect.x, rect.y, rect.w, rect.h);
+            if (restartBtnImg.complete && restartBtnImg.naturalWidth !== 0) {
+                ctx.drawImage(restartBtnImg, rect.x, rect.y, rect.w, rect.h);
+            }
         }
 
         function drawSlotPiratesAudioIcon(cx, cy, type, isMuted) {
@@ -709,7 +711,7 @@
 
             let nodes = getBetArcNodes();
             if (Math.hypot(x - nodes[4].x, y - nodes[4].y) <= 22) {
-                if (balance > 0) {
+                if (balance >= 100000) {
                     isBetAllActive = !isBetAllActive;
                     currentBet = isBetAllActive ? balance : betSteps[betIndex];
                     playSound(clickSound);
@@ -733,6 +735,11 @@
             }
 
             if (!spinning && !isGameOver && x >= spinPlankRect.x && x <= spinPlankRect.x + spinPlankRect.w && y >= spinPlankRect.y && y <= spinPlankRect.y + spinPlankRect.h) {
+                if (balance < 100000) {
+                    bannerText = "USE SLINGSHOT TO REACH $100k MIN BET!";
+                    bannerAlpha = 3.0;
+                    return;
+                }
                 if (balance < currentBet) {
                     bannerText = "INSUFFICIENT FUNDS FOR BET!";
                     bannerAlpha = 3.0;
@@ -932,6 +939,24 @@
             drawBetSliderOval();
 
             drawCustomButtonImage(spinBtnImg, spinPlankRect.x, spinPlankRect.y, spinPlankRect.w, spinPlankRect.h);
+
+            // Dynamic Spin Button Text / Low Gold Notice
+            ctx.save();
+            let plankCenterX = spinPlankRect.x + spinPlankRect.w / 2;
+            let plankCenterY = spinPlankRect.y + spinPlankRect.h / 2;
+            
+            let plankDisplayLabel = "SPIN TEMPLE";
+            let plankFontSize = "18px Georgia";
+            if (isGameOver) {
+                plankDisplayLabel = "GAME OVER";
+                plankFontSize = "16px Georgia";
+            } else if (balance < 100000 && bannerAlpha <= 0) {
+                plankDisplayLabel = "Use Slingshot to Resume";
+                plankFontSize = "12px Georgia";
+            }
+            drawOutlinedText(plankDisplayLabel, plankCenterX, plankCenterY, `bold ${plankFontSize}`, isGameOver ? "#ff4d4d" : SOFT_GOLD);
+            ctx.restore();
+
             drawSpinTempleStyleRestart(restartWheelRect);
 
             flowerParticles.forEach((fp, idx) => {

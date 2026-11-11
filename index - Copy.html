@@ -92,8 +92,9 @@
         const slingshotImg = new Image(); slingshotImg.src = "slingshot.png";
         const vineImg = new Image(); vineImg.src = "leftvine.png";
 
-        // Custom Button Image (Spin Temple)
+        // Custom Button Images (Spin Temple & Restart)
         const spinBtnImg = new Image(); spinBtnImg.src = "spin.jpg";
+        const restartBtnImg = new Image(); restartBtnImg.src = "restart.jpg";
 
         const hazardImages = {
             'jaguar': (() => { let img = new Image(); img.src = "jaguar.png"; return img; })(),
@@ -271,63 +272,9 @@
         }
 
         function drawSpinTempleStyleRestart(rect) {
-            ctx.save();
-            let cx = rect.x + rect.w / 2;
-            let cy = rect.y + rect.h / 2;
-
-            ctx.fillStyle = "#140702";
-            ctx.beginPath();
-            ctx.roundRect(rect.x + 2, rect.y + 3, rect.w, rect.h, 22);
-            ctx.fill();
-
-            let outerGrad = ctx.createLinearGradient(rect.x, rect.y, rect.x, rect.y + rect.h);
-            outerGrad.addColorStop(0, "#4a2408");
-            outerGrad.addColorStop(0.5, "#2d1404");
-            outerGrad.addColorStop(1, "#180a02");
-
-            ctx.fillStyle = outerGrad;
-            ctx.strokeStyle = "#0d0401";
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 20);
-            ctx.fill();
-            ctx.stroke();
-
-            let faceGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, rect.w / 2);
-            faceGrad.addColorStop(0, "#8c5520");
-            faceGrad.addColorStop(0.6, "#542f10");
-            faceGrad.addColorStop(1, "#281203");
-
-            ctx.fillStyle = faceGrad;
-            ctx.strokeStyle = "#1a0b02";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.roundRect(rect.x + 6, rect.y + 6, rect.w - 12, rect.h - 12, 14);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.save();
-            ctx.font = "bold 15px Georgia, serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.lineWidth = 3.5;
-
-            ctx.strokeStyle = "#120501";
-            ctx.strokeText("RESTART", cx, cy);
-            
-            let textGrad = ctx.createLinearGradient(cx, cy - 8, cx, cy + 8);
-            textGrad.addColorStop(0, "#ffeb80");
-            textGrad.addColorStop(0.5, "#f5cb5c");
-            textGrad.addColorStop(1, "#c29b2e");
-            
-            ctx.fillStyle = textGrad;
-            ctx.fillText("RESTART", cx, cy);
-            
-            ctx.restore();
-            ctx.restore();
+            drawCustomButtonImage(restartBtnImg, rect.x, rect.y, rect.w, rect.h);
         }
 
-        // SlotPirates style vector audio icon drawer
         function drawSlotPiratesAudioIcon(cx, cy, type, isMuted) {
             ctx.save();
             ctx.translate(cx, cy);
@@ -797,7 +744,6 @@
                 activeHazard = null;
                 stoneProjectile = null;
                 
-                // Play spin sound synchronized with the spin duration
                 let spinSfx = document.getElementById("spinSound");
                 if (!soundsMuted && spinSfx) {
                     spinSfx.currentTime = 0;
@@ -817,7 +763,6 @@
                         clearInterval(interval);
                         spinning = false;
 
-                        // Immediately cut off spin sound when reels stop
                         if (spinSfx) {
                             spinSfx.pause();
                             spinSfx.currentTime = 0;
