@@ -377,12 +377,15 @@
                 }
             }
 
+            // Small brown aim indicator dot right above the targeted reel card
             let aimX = reelStartX + currentAimReel * 125 + 40;
             ctx.save();
-            ctx.strokeStyle = "#8b4513";
-            ctx.lineWidth = 4;
+            ctx.fillStyle = "#8b4513";
+            ctx.strokeStyle = DARK_BROWN;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.arc(aimX, 185, 45, Math.PI, 0, false);
+            ctx.arc(aimX, 185, 5, 0, Math.PI * 2);
+            ctx.fill();
             ctx.stroke();
             ctx.restore();
 
@@ -445,7 +448,6 @@
             drawTransparentImageRotated(vineImg, rightVineBtnRect.x, rightVineBtnRect.y, rightVineBtnRect.w, rightVineBtnRect.h, true, 0);
             ctx.globalAlpha = 1.0;
 
-            // Perfectly balanced slingshot artwork rotation: Left (-0.60), Center (-0.25), Right (+0.15)
             let slingshotAngle = (currentAimReel === 0) ? -0.60 : (currentAimReel === 2) ? 0.15 : -0.25;
             drawTransparentImageRotated(slingshotImg, slingshotBtnRect.x - 5, slingshotBtnRect.y, 55, 60, false, slingshotAngle);
             ctx.restore();
