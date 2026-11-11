@@ -434,7 +434,7 @@
             let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
 
             if (hazardActive && activeHazard) {
-                let hazardDurationMs = 45000;
+                let hazardDurationMs = 15000;
                 let elapsed = Date.now() - activeHazard.startTime;
                 let timeLeft = Math.max(0, hazardDurationMs - elapsed);
                 if (timeLeft === 0) {
