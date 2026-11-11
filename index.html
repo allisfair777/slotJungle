@@ -165,14 +165,13 @@
             fireflies.push({ x: Math.random() * 800, y: Math.random() * 400 + 150, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, alpha: Math.random() });
         }
 
-        // Layout Rectangles (Compact Audio controls, side-by-side or stacked neatly)
+        // Layout Rectangles (Restart pulled in closer to center, buttons optimized)
         const logoRect = { x: 25, y: 25, w: 55, h: 55 };
         const payoutOvalRect = { x: 25, y: 295, w: 365, h: 140 };
         const betSliderOvalRect = { x: 410, y: 295, w: 365, h: 140 };
-        const spinPlankRect = { x: 550, y: 450, w: 220, h: 75 };
-        const restartWheelRect = { x: 25, y: 450, w: 75, h: 75 };
+        const spinPlankRect = { x: 560, y: 452, w: 200, h: 70 };
+        const restartWheelRect = { x: 45, y: 452, w: 70, h: 70 };
         
-        // Compact audio controls
         const musicMuteRect = { x: 580, y: 25, w: 24, h: 24 };
         const musicSliderRect = { x: 610, y: 32, w: 55, h: 12 };
         const playlistDropdownRect = { x: 550, y: 55, w: 115, h: 26 };
@@ -250,7 +249,7 @@
             ctx.restore();
         }
 
-        // Helper to draw uploaded custom JPEG buttons with black/dark background transparency
+        // Enhanced transparency filter for custom uploaded buttons (removes dark checkboards/backgrounds)
         function drawCustomButtonImage(img, x, y, w, h) {
             if (!img.complete || img.naturalWidth === 0) return;
             const tempCanvas = document.createElement('canvas');
@@ -263,8 +262,8 @@
             let data = imgData.data;
             for (let i = 0; i < data.length; i += 4) {
                 let r = data[i], g = data[i+1], b = data[i+2];
-                // Remove black/dark backdrop from uploaded rectangular jpegs to make circular
-                if (r < 25 && g < 25 && b < 25) {
+                // Remove dark, gray, and checkered background pixels around the circular button
+                if ((r < 40 && g < 40 && b < 40) || (Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && r > 100 && r < 170)) {
                     data[i+3] = 0;
                 }
             }
@@ -480,7 +479,6 @@
             ctx.restore();
         }
 
-        // Payout order rearranged progressively from lowest to highest
         function drawPayoutOval() {
             ctx.save();
             ctx.fillStyle = "rgba(60, 35, 12, 0.72)";
@@ -496,23 +494,22 @@
 
             let rowY = [payoutOvalRect.y + 42, payoutOvalRect.y + 66, payoutOvalRect.y + 90, payoutOvalRect.y + 114];
 
-            // 1st: 2x Any
+            // 1) Treasures text pulled closer to icons (+75px), Hazards nudged slightly left
+            const textX = payoutOvalRect.x + 75;
+            const hazX = payoutOvalRect.x + 195;
+
             ctx.drawImage(tigerImg, payoutOvalRect.x + 20, rowY[0] - 10, 20, 20);
-            drawOutlinedText("2x Any - $5,000,000", payoutOvalRect.x + 85, rowY[0], "bold 10px Georgia", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("2x Any - $5,000,000", textX, rowY[0], "bold 10px Georgia", WHITE, DARK_BROWN, "left");
 
-            // 2nd: 3x Any
             ctx.drawImage(monkeyImg, payoutOvalRect.x + 20, rowY[1] - 10, 20, 20);
-            drawOutlinedText("3x Any - $10,000,000", payoutOvalRect.x + 85, rowY[1], "bold 10px Georgia", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("3x Any - $10,000,000", textX, rowY[1], "bold 10px Georgia", WHITE, DARK_BROWN, "left");
 
-            // 3rd: 3x All
             ctx.drawImage(jungleImg, payoutOvalRect.x + 20, rowY[2] - 10, 20, 20);
-            drawOutlinedText("3x All - $20,000,000", payoutOvalRect.x + 85, rowY[2], "bold 10px Georgia", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("3x All - $20,000,000", textX, rowY[2], "bold 10px Georgia", WHITE, DARK_BROWN, "left");
 
-            // 4th: Jackpot
             ctx.drawImage(shibaImg, payoutOvalRect.x + 20, rowY[3] - 10, 20, 20);
-            drawOutlinedText("Jackpot - $50,000,000", payoutOvalRect.x + 85, rowY[3], "bold 10px Georgia", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("Jackpot - $50,000,000", textX, rowY[3], "bold 10px Georgia", WHITE, DARK_BROWN, "left");
 
-            let hazX = payoutOvalRect.x + 203;
             drawOutlinedText("Jaguar Trap", hazX + 25, rowY[0], "bold 11px Georgia", "#ffb3b3", DARK_BROWN, "left");
             drawOutlinedText("-1%", hazX + 130, rowY[0], "bold 11px Georgia", "#ff6666", DARK_BROWN, "right");
             drawOutlinedText("Venom Vine", hazX + 25, rowY[1], "bold 11px Georgia", "#ffb3b3", DARK_BROWN, "left");
@@ -525,7 +522,6 @@
             ctx.restore();
         }
 
-        // Bet label moved to the left
         function drawBetSliderOval() {
             ctx.save();
             ctx.fillStyle = "rgba(60, 35, 12, 0.72)";
@@ -685,7 +681,6 @@
                 return;
             }
 
-            // Spin Action Button
             if (!spinning && !isGameOver && x >= spinPlankRect.x && x <= spinPlankRect.x + spinPlankRect.w && y >= spinPlankRect.y && y <= spinPlankRect.y + spinPlankRect.h) {
                 if (balance < currentBet) {
                     bannerText = "INSUFFICIENT FUNDS FOR BET!";
@@ -745,7 +740,6 @@
                                 };
                                 hazardActive = true;
 
-                                // 1) No reel number on hazard banner
                                 bannerText = `${chosenType.toUpperCase()}`;
                                 bannerAlpha = 4.0;
                                 triggerScreenShake(400, 8);
@@ -773,7 +767,6 @@
                 return;
             }
 
-            // 2) Restart Button: Clears game over message & resets state
             if (x >= restartWheelRect.x && x <= restartWheelRect.x + restartWheelRect.w && y >= restartWheelRect.y && y <= restartWheelRect.y + restartWheelRect.h) {
                 balance = 500000;
                 isGameOver = false;
@@ -817,7 +810,7 @@
             drawOutlinedText(`Highest Loot  $${highscore.toLocaleString()}`, 95, 38, "bold 18px Georgia", SOFT_GOLD, DARK_BROWN, "left");
             drawOutlinedText(`Treasure Hunt $${balance.toLocaleString()}`, 95, 65, "bold 20px Georgia", WHITE, DARK_BROWN, "left");
 
-            // --- 4) COMPACT AUDIO CONTROL RACK ---
+            // --- AUDIO CONTROL RACK ---
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(musicMuteRect.x, musicMuteRect.y, musicMuteRect.w, musicMuteRect.h, 6); ctx.fill(); ctx.stroke();
             ctx.drawImage(musicMuted ? muteImg : speakerImg, musicMuteRect.x + 3, musicMuteRect.y + 3, 18, 18);
@@ -844,7 +837,6 @@
             ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(soundsSliderRect.x + (soundsVolume * soundsSliderRect.w), soundsSliderRect.y + 6, 5, 0, Math.PI * 2); ctx.fill();
             drawOutlinedText("SOUNDS", soundsMuteRect.x + 12, soundsMuteRect.y - 8, "bold 8px Georgia", SOFT_GOLD, DARK_BROWN);
 
-            // Time Mode toggle button
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(timeToggleRect.x, timeToggleRect.y, timeToggleRect.w, timeToggleRect.h, 6); ctx.fill(); ctx.stroke();
             drawOutlinedText(timeModes[timeModeIndex], timeToggleRect.x + timeToggleRect.w / 2, timeToggleRect.y + timeToggleRect.h / 2, "bold 10px Georgia", SOFT_GOLD);
@@ -879,7 +871,7 @@
             drawPayoutOval();
             drawBetSliderOval();
 
-            // 6) Render custom uploaded button images (`spin.jpg` & `restart.jpg`)
+            // Render custom transparent button images (`spin.jpg` & `restart.jpg`)
             drawCustomButtonImage(spinBtnImg, spinPlankRect.x, spinPlankRect.y, spinPlankRect.w, spinPlankRect.h);
             drawCustomButtonImage(restartBtnImg, restartWheelRect.x, restartWheelRect.y, restartWheelRect.w, restartWheelRect.h);
 
