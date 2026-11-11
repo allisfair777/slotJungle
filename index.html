@@ -94,7 +94,7 @@
         const slingshotImg = new Image(); slingshotImg.src = "slingshot.png";
         const vineImg = new Image(); vineImg.src = "leftvine.png";
 
-        // Custom Button Image (Spin only)
+        // Custom Button Image (Spin Temple)
         const spinBtnImg = new Image(); spinBtnImg.src = "spin.jpg";
 
         const hazardImages = {
@@ -164,16 +164,16 @@
             fireflies.push({ x: Math.random() * 800, y: Math.random() * 400 + 150, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, alpha: Math.random() });
         }
 
-        // Layout Rectangles (Playlist width narrowed to match speaker alignment)
+        // Layout Rectangles (Playlist width set to 85px to stretch exactly to the end of the music volume line)
         const logoRect = { x: 25, y: 25, w: 55, h: 55 };
         const payoutOvalRect = { x: 25, y: 295, w: 365, h: 140 };
         const betSliderOvalRect = { x: 410, y: 295, w: 365, h: 140 };
         const spinPlankRect = { x: 560, y: 452, w: 200, h: 70 };
-        const restartWheelRect = { x: 45, y: 452, w: 90, h: 70 };
+        const restartWheelRect = { x: 45, y: 452, w: 100, h: 65 };
         
         const musicMuteRect = { x: 580, y: 25, w: 24, h: 24 };
         const musicSliderRect = { x: 610, y: 32, w: 55, h: 12 };
-        const playlistDropdownRect = { x: 580, y: 55, w: 75, h: 26 };
+        const playlistDropdownRect = { x: 580, y: 55, w: 85, h: 26 };
 
         const soundsMuteRect = { x: 695, y: 25, w: 24, h: 24 };
         const soundsSliderRect = { x: 725, y: 32, w: 45, h: 12 };
@@ -270,23 +270,52 @@
             ctx.drawImage(tempCanvas, x, y, w, h);
         }
 
-        // Clean wooden button drawer for Restart
-        function drawWoodenButton(rect, text) {
+        // Carved wooden log style for Restart matching Spin Temple artwork
+        function drawSpinTempleStyleRestart(rect) {
             ctx.save();
-            let grad = ctx.createLinearGradient(rect.x, rect.y, rect.x, rect.y + rect.h);
-            grad.addColorStop(0, "#a85d22");
-            grad.addColorStop(0.5, "#7a3e10");
-            grad.addColorStop(1, "#4a2205");
+            let cx = rect.x + rect.w / 2;
+            let cy = rect.y + rect.h / 2;
+            let rx = rect.w / 2;
+            let ry = rect.h / 2;
 
-            ctx.fillStyle = grad;
-            ctx.strokeStyle = SOFT_GOLD;
-            ctx.lineWidth = 2.5;
-
+            // Outer dark bark shadow
+            ctx.fillStyle = "#2a1405";
             ctx.beginPath();
-            ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 16);
+            ctx.ellipse(cx, cy + 3, rx, ry, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Rough bark rim layer
+            ctx.fillStyle = "#4a2408";
+            ctx.strokeStyle = "#1b0a02";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-            drawOutlinedText(text, rect.x + rect.w / 2, rect.y + rect.h / 2, "bold 14px Georgia", LIGHT_GOLD);
+
+            // Inner wood log face with gradient
+            let logGrad = ctx.createRadialGradient(cx, cy, 5, cx, cy, rx);
+            logGrad.addColorStop(0, "#c28846");
+            logGrad.addColorStop(0.7, "#8c5520");
+            logGrad.addColorStop(1, "#59310c");
+
+            ctx.fillStyle = logGrad;
+            ctx.strokeStyle = "#381c06";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, rx - 6, ry - 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Carved wood rings
+            ctx.strokeStyle = "rgba(74, 36, 8, 0.45)";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, rx - 12, ry - 12, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Carved text: RESTART with golden relief
+            drawOutlinedText("RESTART", cx, cy, "bold 15px Georgia", SOFT_GOLD, "#2b1404");
             ctx.restore();
         }
 
@@ -568,7 +597,6 @@
                 ctx.restore();
             });
 
-            // Bet All coin node restored to Shiba (Doge image)
             let coin = nodes[4];
             ctx.fillStyle = isBetAllActive ? "#ffd166" : "#4a2d11";
             ctx.strokeStyle = isBetAllActive ? "#fff" : SOFT_GOLD;
@@ -841,11 +869,11 @@
 
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y, playlistDropdownRect.w, playlistDropdownRect.h, 6); ctx.fill(); ctx.stroke();
-            drawOutlinedText(`🎵 ${trackNames[currentTrackIndex].split(" ")[0]} ▾`, playlistDropdownRect.x + 37, playlistDropdownRect.y + 13, "bold 10px Georgia", SOFT_GOLD);
+            drawOutlinedText(`🎵 ${trackNames[currentTrackIndex].split(" ")[0]} ▾`, playlistDropdownRect.x + 42, playlistDropdownRect.y + 13, "bold 10px Georgia", SOFT_GOLD);
 
             if (playlistDropdownOpen) {
                 ctx.fillStyle = "#1a0a00"; ctx.strokeStyle = SOFT_GOLD; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y + 30, playlistDropdownRect.w + 10, trackNames.length * 26, 6); ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y + 30, playlistDropdownRect.w + 40, trackNames.length * 26, 6); ctx.fill(); ctx.stroke();
                 trackNames.forEach((name, idx) => {
                     drawOutlinedText(name, playlistDropdownRect.x + 8, playlistDropdownRect.y + 43 + (idx * 26), "10px Georgia", idx === currentTrackIndex ? SOFT_GOLD : WHITE, DARK_BROWN, "left");
                 });
@@ -892,9 +920,9 @@
             drawPayoutOval();
             drawBetSliderOval();
 
-            // Render Spin button and custom text-styled Restart wooden button
+            // Render Spin button image and matching carved log style for Restart
             drawCustomButtonImage(spinBtnImg, spinPlankRect.x, spinPlankRect.y, spinPlankRect.w, spinPlankRect.h);
-            drawWoodenButton(restartWheelRect, "RESTART");
+            drawSpinTempleStyleRestart(restartWheelRect);
 
             flowerParticles.forEach((fp, idx) => {
                 fp.update(dt);
