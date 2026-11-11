@@ -94,9 +94,8 @@
         const slingshotImg = new Image(); slingshotImg.src = "slingshot.png";
         const vineImg = new Image(); vineImg.src = "leftvine.png";
 
-        // Custom Button Images
+        // Custom Button Image (Spin only)
         const spinBtnImg = new Image(); spinBtnImg.src = "spin.jpg";
-        const restartBtnImg = new Image(); restartBtnImg.src = "restart.jpg";
 
         const hazardImages = {
             'jaguar': (() => { let img = new Image(); img.src = "jaguar.png"; return img; })(),
@@ -165,16 +164,16 @@
             fireflies.push({ x: Math.random() * 800, y: Math.random() * 400 + 150, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, alpha: Math.random() });
         }
 
-        // Layout Rectangles
+        // Layout Rectangles (Playlist width narrowed to match speaker alignment)
         const logoRect = { x: 25, y: 25, w: 55, h: 55 };
         const payoutOvalRect = { x: 25, y: 295, w: 365, h: 140 };
         const betSliderOvalRect = { x: 410, y: 295, w: 365, h: 140 };
         const spinPlankRect = { x: 560, y: 452, w: 200, h: 70 };
-        const restartWheelRect = { x: 45, y: 452, w: 70, h: 70 };
+        const restartWheelRect = { x: 45, y: 452, w: 90, h: 70 };
         
         const musicMuteRect = { x: 580, y: 25, w: 24, h: 24 };
         const musicSliderRect = { x: 610, y: 32, w: 55, h: 12 };
-        const playlistDropdownRect = { x: 550, y: 55, w: 115, h: 26 };
+        const playlistDropdownRect = { x: 580, y: 55, w: 75, h: 26 };
 
         const soundsMuteRect = { x: 695, y: 25, w: 24, h: 24 };
         const soundsSliderRect = { x: 725, y: 32, w: 45, h: 12 };
@@ -249,7 +248,6 @@
             ctx.restore();
         }
 
-        // Thorough transparency filter to completely eliminate checkered mesh backgrounds and smudges from uploaded jpegs
         function drawCustomButtonImage(img, x, y, w, h) {
             if (!img.complete || img.naturalWidth === 0) return;
             const tempCanvas = document.createElement('canvas');
@@ -262,7 +260,6 @@
             let data = imgData.data;
             for (let i = 0; i < data.length; i += 4) {
                 let r = data[i], g = data[i+1], b = data[i+2];
-                // Remove dark, gray, checkered, and neutral background pixels outside the circular button
                 if ((r < 45 && g < 45 && b < 45) || 
                     (Math.abs(r - g) < 20 && Math.abs(g - b) < 20 && r > 90 && r < 190) ||
                     (r > 190 && g > 190 && b > 190 && Math.abs(r - g) < 10)) {
@@ -271,6 +268,26 @@
             }
             tCtx.putImageData(imgData, 0, 0);
             ctx.drawImage(tempCanvas, x, y, w, h);
+        }
+
+        // Clean wooden button drawer for Restart
+        function drawWoodenButton(rect, text) {
+            ctx.save();
+            let grad = ctx.createLinearGradient(rect.x, rect.y, rect.x, rect.y + rect.h);
+            grad.addColorStop(0, "#a85d22");
+            grad.addColorStop(0.5, "#7a3e10");
+            grad.addColorStop(1, "#4a2205");
+
+            ctx.fillStyle = grad;
+            ctx.strokeStyle = SOFT_GOLD;
+            ctx.lineWidth = 2.5;
+
+            ctx.beginPath();
+            ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 16);
+            ctx.fill();
+            ctx.stroke();
+            drawOutlinedText(text, rect.x + rect.w / 2, rect.y + rect.h / 2, "bold 14px Georgia", LIGHT_GOLD);
+            ctx.restore();
         }
 
         class FlowerParticle {
@@ -537,7 +554,6 @@
             drawOutlinedText(label, betSliderOvalRect.x + 110, betSliderOvalRect.y + 22, "bold 15px Georgia", SOFT_GOLD);
 
             let nodes = getBetArcNodes();
-            // Progressive step icons: Tiger ($100k), Monkey ($250k), Parrot ($500k), Jungle/All ($1M)
             let stepIcons = [tigerImg, monkeyImg, parrotImg, jungleImg];
 
             betSteps.forEach((val, idx) => {
@@ -552,7 +568,7 @@
                 ctx.restore();
             });
 
-            // Bet All coin node uses Shiba
+            // Bet All coin node restored to Shiba (Doge image)
             let coin = nodes[4];
             ctx.fillStyle = isBetAllActive ? "#ffd166" : "#4a2d11";
             ctx.strokeStyle = isBetAllActive ? "#fff" : SOFT_GOLD;
@@ -561,7 +577,7 @@
             ctx.arc(coin.x, coin.y, 20, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-            drawOutlinedText("ALL", coin.x, coin.y, "bold 11px Georgia", DARK_BROWN, SOFT_GOLD);
+            ctx.drawImage(shibaImg, coin.x - 14, coin.y - 14, 28, 28);
             drawOutlinedText("Bet All", coin.x, coin.y + 26, "bold 10px Georgia", isBetAllActive ? SOFT_GOLD : "#ddd");
 
             ctx.restore();
@@ -825,13 +841,13 @@
 
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y, playlistDropdownRect.w, playlistDropdownRect.h, 6); ctx.fill(); ctx.stroke();
-            drawOutlinedText(`🎵 ${trackNames[currentTrackIndex].split(" ")[0]} ▾`, playlistDropdownRect.x + 57, playlistDropdownRect.y + 13, "bold 10px Georgia", SOFT_GOLD);
+            drawOutlinedText(`🎵 ${trackNames[currentTrackIndex].split(" ")[0]} ▾`, playlistDropdownRect.x + 37, playlistDropdownRect.y + 13, "bold 10px Georgia", SOFT_GOLD);
 
             if (playlistDropdownOpen) {
                 ctx.fillStyle = "#1a0a00"; ctx.strokeStyle = SOFT_GOLD; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y + 30, playlistDropdownRect.w + 30, trackNames.length * 26, 6); ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y + 30, playlistDropdownRect.w + 10, trackNames.length * 26, 6); ctx.fill(); ctx.stroke();
                 trackNames.forEach((name, idx) => {
-                    drawOutlinedText(name, playlistDropdownRect.x + 10, playlistDropdownRect.y + 43 + (idx * 26), "10px Georgia", idx === currentTrackIndex ? SOFT_GOLD : WHITE, DARK_BROWN, "left");
+                    drawOutlinedText(name, playlistDropdownRect.x + 8, playlistDropdownRect.y + 43 + (idx * 26), "10px Georgia", idx === currentTrackIndex ? SOFT_GOLD : WHITE, DARK_BROWN, "left");
                 });
             }
 
@@ -876,9 +892,9 @@
             drawPayoutOval();
             drawBetSliderOval();
 
-            // Render clean custom button images with background removed
+            // Render Spin button and custom text-styled Restart wooden button
             drawCustomButtonImage(spinBtnImg, spinPlankRect.x, spinPlankRect.y, spinPlankRect.w, spinPlankRect.h);
-            drawCustomButtonImage(restartBtnImg, restartWheelRect.x, restartWheelRect.y, restartWheelRect.w, restartWheelRect.h);
+            drawWoodenButton(restartWheelRect, "RESTART");
 
             flowerParticles.forEach((fp, idx) => {
                 fp.update(dt);
