@@ -216,7 +216,6 @@
             screenShakeIntensity = intensity;
         }
 
-        // Helper to draw transparent images with optional rotation angle
         function drawTransparentImageRotated(img, x, y, w, h, flipH = false, angle = 0) {
             if (!img.complete || img.naturalWidth === 0) return;
             const tempCanvas = document.createElement('canvas');
@@ -349,7 +348,6 @@
             let symbolSize = 80;
             let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
 
-            // 4) Render Hazard Asset Image & Timer: Positioned above reel & below aiming arc
             if (hazardActive && activeHazard) {
                 let hazardDurationMs = 45000;
                 let elapsed = Date.now() - activeHazard.startTime;
@@ -364,14 +362,13 @@
                 } else {
                     ctx.save();
                     let hx = reelStartX + activeHazard.reelIndex * 125 + 40;
-                    let hy = 140; // Placed right above reel and below aim arc
+                    let hy = 140;
 
                     let hImg = hazardImages[activeHazard.type];
                     if (hImg) {
                         drawTransparentImageRotated(hImg, hx - 22, hy - 22, 44, 44, false, 0);
                     }
 
-                    // Countdown bar
                     ctx.fillStyle = "#333";
                     ctx.fillRect(hx - 20, hy - 30, 40, 5);
                     ctx.fillStyle = timeLeft < 6000 ? "#ff3333" : "#4dff4d";
@@ -380,7 +377,6 @@
                 }
             }
 
-            // Aim Arc Indicator above target reel
             let aimX = reelStartX + currentAimReel * 125 + 40;
             ctx.save();
             ctx.strokeStyle = "#8b4513";
@@ -390,7 +386,6 @@
             ctx.stroke();
             ctx.restore();
 
-            // Flying Stone Projectile
             if (stoneProjectile) {
                 stoneProjectile.progress += 0.05;
                 let curX = stoneProjectile.startX + (stoneProjectile.targetX - stoneProjectile.startX) * stoneProjectile.progress;
@@ -442,19 +437,15 @@
                 }
             }
 
-            // 1 & 2) Render Slingshot & Darker Vine Controls with Rotation and Clear Disable States
             ctx.save();
-            
-            // Left Vine Button (Darker Green, Dimmed when disabled at Reel 0)
             ctx.globalAlpha = (currentAimReel === 0) ? 0.25 : 0.95;
             drawTransparentImageRotated(vineImg, leftVineBtnRect.x, leftVineBtnRect.y, leftVineBtnRect.w, leftVineBtnRect.h, false, 0);
 
-            // Right Vine Button (Darker Green, Dimmed when disabled at Reel 2)
             ctx.globalAlpha = (currentAimReel === 2) ? 0.25 : 0.95;
             drawTransparentImageRotated(vineImg, rightVineBtnRect.x, rightVineBtnRect.y, rightVineBtnRect.w, rightVineBtnRect.h, true, 0);
             ctx.globalAlpha = 1.0;
 
-            // Slingshot Rotation: Tilted Left (-0.35 rad) for Reel 0, Upright (0 rad) for Reel 1, Tilted Right (+0.35 rad) for Reel 2
+            // Fixed Slingshot Rotation Mapping: Left (-0.35), Center (0), Right (+0.35)
             let slingshotAngle = (currentAimReel === 0) ? -0.35 : (currentAimReel === 2) ? 0.35 : 0;
             drawTransparentImageRotated(slingshotImg, slingshotBtnRect.x - 5, slingshotBtnRect.y, 55, 60, false, slingshotAngle);
             ctx.restore();
@@ -475,7 +466,6 @@
 
             let rowY = [payoutOvalRect.y + 42, payoutOvalRect.y + 66, payoutOvalRect.y + 90, payoutOvalRect.y + 114];
 
-            // 3) Updated Payout Titles: 3x All ($75k) and 3x Any ($50k)
             ctx.drawImage(shibaImg, payoutOvalRect.x + 20, rowY[0] - 10, 20, 20);
             drawOutlinedText("3x Shiba - $100,000", payoutOvalRect.x + 85, rowY[0], "10px Arial bold", WHITE, DARK_BROWN, "left");
 
@@ -495,7 +485,7 @@
             drawOutlinedText("-5%", hazX + 130, rowY[1], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
             drawOutlinedText("Quicksand", hazX + 25, rowY[2], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
             drawOutlinedText("-10%", hazX + 130, rowY[2], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
-            drawOutlinedText("Temple Curse", hazX + 25, rowY[3], "11px Arial bold", "#ff9999", DARK_BROWN, "left");
+            drawOutlinedText("Temple Curse", hazX + 25, rowY[3], "11px Arial bold", "#ff4d4d", DARK_BROWN, "left");
             drawOutlinedText("-15%", hazX + 130, rowY[3], "11px Arial bold", "#ff4d4d", DARK_BROWN, "right");
 
             ctx.restore();
@@ -736,7 +726,6 @@
                                 };
                                 hazardActive = true;
 
-                                // 4) Brief hazard message placed higher (y: 95) without exclamation marks
                                 bannerText = `${chosenType.toUpperCase()} REEL ${targetReel + 1}`;
                                 bannerAlpha = 4.0;
                                 triggerScreenShake(400, 8);
@@ -853,7 +842,6 @@
                 }
             }
 
-            // 4) Brief notification banner moved up to y: 95 to avoid top drop down
             if (bannerAlpha > 0) {
                 ctx.save();
                 ctx.globalAlpha = Math.min(1.0, bannerAlpha);
