@@ -879,7 +879,7 @@ function drawSpinTempleStyleRestart(rect) {
             ctx.drawImage(musicMuted ? muteImg : speakerImg, musicMuteRect.x + 3, musicMuteRect.y + 3, 18, 18);
             ctx.fillStyle = "#1a0a00"; ctx.fillRect(musicSliderRect.x, musicSliderRect.y + 4, musicSliderRect.w, 4);
             ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(musicSliderRect.x + (musicVolume * musicSliderRect.w), musicSliderRect.y + 6, 5, 0, Math.PI * 2); ctx.fill();
-            drawOutlinedText("MUSIC", musicMuteRect.x + 12, musicMuteRect.y - 8, "bold 8px Georgia", SOFT_GOLD, DARK_BROWN);
+            drawOutlinedText("", musicMuteRect.x + 12, musicMuteRect.y - 8, "bold 8px Georgia", SOFT_GOLD, DARK_BROWN);
 
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y, playlistDropdownRect.w, playlistDropdownRect.h, 6); ctx.fill(); ctx.stroke();
@@ -898,7 +898,7 @@ function drawSpinTempleStyleRestart(rect) {
             ctx.drawImage(soundsMuted ? muteImg : speakerImg, soundsMuteRect.x + 3, soundsMuteRect.y + 3, 18, 18);
             ctx.fillStyle = "#1a0a00"; ctx.fillRect(soundsSliderRect.x, soundsSliderRect.y + 4, soundsSliderRect.w, 4);
             ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(soundsSliderRect.x + (soundsVolume * soundsSliderRect.w), soundsSliderRect.y + 6, 5, 0, Math.PI * 2); ctx.fill();
-            drawOutlinedText("SOUNDS", soundsMuteRect.x + 12, soundsMuteRect.y - 8, "bold 8px Georgia", SOFT_GOLD, DARK_BROWN);
+            drawOutlinedText("", soundsMuteRect.x + 12, soundsMuteRect.y - 8, "bold 8px Georgia", SOFT_GOLD, DARK_BROWN);
 
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(timeToggleRect.x, timeToggleRect.y, timeToggleRect.w, timeToggleRect.h, 6); ctx.fill(); ctx.stroke();
