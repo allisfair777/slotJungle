@@ -989,10 +989,8 @@
             drawPayoutOval();
             drawBetSliderOval();
 
-            drawCustomButtonImage(spinBtnImg, spinPlankRect.x, spinPlankRect.y, spinPlankRect.w, spinPlankRect.h);
-            //drawSpinTempleStyleRestart(restartWheelRect);
-	    drawCustomButtonImage(restartBtnImg, spinPlankRect.x-100, spinPlankRect.y, spinPlankRect.w, spinPlankRect.h);
-
+            drawCustomButtonImage(restartBtnImg, spinPlankRect.x, spinPlankRect.y, spinPlankRect.w, spinPlankRect.h);
+            drawSpinTempleStyleRestart(restartWheelRect);
 
             flowerParticles.forEach((fp, idx) => {
                 fp.update(dt);
