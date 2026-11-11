@@ -88,8 +88,6 @@
         const parrotImg = new Image(); parrotImg.src = "parrot.png";
         const monkeyImg = new Image(); monkeyImg.src = "monkey.png";
         const jungleImg = new Image(); jungleImg.src = "jungle.png";
-        const speakerImg = new Image(); speakerImg.src = "speaker.png";
-        const muteImg = new Image(); muteImg.src = "mute.png";
         
         const slingshotImg = new Image(); slingshotImg.src = "slingshot.png";
         const vineImg = new Image(); vineImg.src = "leftvine.png";
@@ -164,7 +162,7 @@
             fireflies.push({ x: Math.random() * 800, y: Math.random() * 400 + 150, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, alpha: Math.random() });
         }
 
-        // Layout Rectangles (Playlist width set to 85px to stretch exactly to the end of the music volume line)
+        // Layout Rectangles
         const logoRect = { x: 25, y: 25, w: 55, h: 55 };
         const payoutOvalRect = { x: 25, y: 295, w: 365, h: 140 };
         const betSliderOvalRect = { x: 410, y: 295, w: 365, h: 140 };
@@ -197,10 +195,12 @@
                 }
             }
 
-            let sfxList = [document.getElementById("spinSound"), document.getElementById("winSound"), document.getElementById("clickSound"), document.getElementById("hitSound")];
+            let sfxList = [document.getElementById("winSound"), document.getElementById("clickSound"), document.getElementById("hitSound")];
             sfxList.forEach(sfx => {
                 if (sfx) sfx.volume = soundsMuted ? 0 : soundsVolume;
             });
+            let spinSfx = document.getElementById("spinSound");
+            if (spinSfx) spinSfx.volume = soundsMuted ? 0 : soundsVolume;
         }
 
         function playSound(soundObj) {
@@ -270,68 +270,109 @@
             ctx.drawImage(tempCanvas, x, y, w, h);
         }
 
-// Single-line carved wooden stamp style matching Spin Temple font and proportions
-function drawSpinTempleStyleRestart(rect) {
-    ctx.save();
-    let cx = rect.x + rect.w / 2;
-    let cy = rect.y + rect.h / 2;
+        function drawSpinTempleStyleRestart(rect) {
+            ctx.save();
+            let cx = rect.x + rect.w / 2;
+            let cy = rect.y + rect.h / 2;
 
-    // 1. Drop shadow / dirt base (rounded rectangular log shape matching Spin Temple)
-    ctx.fillStyle = "#140702";
-    ctx.beginPath();
-    ctx.roundRect(rect.x + 2, rect.y + 3, rect.w, rect.h, 22);
-    ctx.fill();
+            ctx.fillStyle = "#140702";
+            ctx.beginPath();
+            ctx.roundRect(rect.x + 2, rect.y + 3, rect.w, rect.h, 22);
+            ctx.fill();
 
-    // 2. Weathered bark border
-    let outerGrad = ctx.createLinearGradient(rect.x, rect.y, rect.x, rect.y + rect.h);
-    outerGrad.addColorStop(0, "#4a2408");
-    outerGrad.addColorStop(0.5, "#2d1404");
-    outerGrad.addColorStop(1, "#180a02");
+            let outerGrad = ctx.createLinearGradient(rect.x, rect.y, rect.x, rect.y + rect.h);
+            outerGrad.addColorStop(0, "#4a2408");
+            outerGrad.addColorStop(0.5, "#2d1404");
+            outerGrad.addColorStop(1, "#180a02");
 
-    ctx.fillStyle = outerGrad;
-    ctx.strokeStyle = "#0d0401";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 20);
-    ctx.fill();
-    ctx.stroke();
+            ctx.fillStyle = outerGrad;
+            ctx.strokeStyle = "#0d0401";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 20);
+            ctx.fill();
+            ctx.stroke();
 
-    // 3. Inner wood face gradient
-    let faceGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, rect.w / 2);
-    faceGrad.addColorStop(0, "#8c5520");
-    faceGrad.addColorStop(0.6, "#542f10");
-    faceGrad.addColorStop(1, "#281203");
+            let faceGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, rect.w / 2);
+            faceGrad.addColorStop(0, "#8c5520");
+            faceGrad.addColorStop(0.6, "#542f10");
+            faceGrad.addColorStop(1, "#281203");
 
-    ctx.fillStyle = faceGrad;
-    ctx.strokeStyle = "#1a0b02";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(rect.x + 6, rect.y + 6, rect.w - 12, rect.h - 12, 14);
-    ctx.fill();
-    ctx.stroke();
+            ctx.fillStyle = faceGrad;
+            ctx.strokeStyle = "#1a0b02";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(rect.x + 6, rect.y + 6, rect.w - 12, rect.h - 12, 14);
+            ctx.fill();
+            ctx.stroke();
 
-    // 4. Single-line antique golden carved text matching Spin Temple font style
-    ctx.save();
-    ctx.font = "bold 15px Georgia, serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.lineWidth = 3.5;
+            ctx.save();
+            ctx.font = "bold 15px Georgia, serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.lineWidth = 3.5;
 
-    ctx.strokeStyle = "#120501";
-    ctx.strokeText("RESTART", cx, cy);
-    
-    // Golden gradient text fill for that metallic/carved look
-    let textGrad = ctx.createLinearGradient(cx, cy - 8, cx, cy + 8);
-    textGrad.addColorStop(0, "#ffeb80");
-    textGrad.addColorStop(0.5, "#f5cb5c");
-    textGrad.addColorStop(1, "#c29b2e");
-    
-    ctx.fillStyle = textGrad;
-    ctx.fillText("RESTART", cx, cy);
-    
-    ctx.restore();
-    ctx.restore();
-}
+            ctx.strokeStyle = "#120501";
+            ctx.strokeText("RESTART", cx, cy);
+            
+            let textGrad = ctx.createLinearGradient(cx, cy - 8, cx, cy + 8);
+            textGrad.addColorStop(0, "#ffeb80");
+            textGrad.addColorStop(0.5, "#f5cb5c");
+            textGrad.addColorStop(1, "#c29b2e");
+            
+            ctx.fillStyle = textGrad;
+            ctx.fillText("RESTART", cx, cy);
+            
+            ctx.restore();
+            ctx.restore();
+        }
+
+        // SlotPirates style vector audio icon drawer
+        function drawSlotPiratesAudioIcon(cx, cy, type, isMuted) {
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            ctx.fillStyle = isMuted ? "#888" : SOFT_GOLD;
+            ctx.strokeStyle = isMuted ? "#888" : SOFT_GOLD;
+            ctx.lineWidth = 2;
+
+            if (type === 'music') {
+                ctx.beginPath();
+                ctx.arc(-3, 3, 2.8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillRect(0, -5, 1.8, 8);
+                ctx.beginPath();
+                ctx.arc(5, 1, 2.8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillRect(8, -7, 1.8, 8);
+                ctx.fillRect(0, -7, 10, 2);
+            } else if (type === 'speaker') {
+                ctx.beginPath();
+                ctx.moveTo(-5, -2);
+                ctx.lineTo(-2, -2);
+                ctx.lineTo(2, -6);
+                ctx.lineTo(2, 6);
+                ctx.lineTo(-2, 2);
+                ctx.lineTo(-5, 2);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(4, 0, 3, -Math.PI/3, Math.PI/3, false);
+                ctx.stroke();
+            }
+
+            if (isMuted) {
+                ctx.strokeStyle = "#ff3333";
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(-7, -7);
+                ctx.lineTo(7, 7);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
 
         class FlowerParticle {
             constructor(x, y) {
@@ -755,7 +796,14 @@ function drawSpinTempleStyleRestart(rect) {
                 hazardActive = false;
                 activeHazard = null;
                 stoneProjectile = null;
-                playSound(spinSound);
+                
+                // Play spin sound synchronized with the spin duration
+                let spinSfx = document.getElementById("spinSound");
+                if (!soundsMuted && spinSfx) {
+                    spinSfx.currentTime = 0;
+                    spinSfx.volume = soundsVolume;
+                    spinSfx.play().catch(e => {});
+                }
 
                 let timer = 0;
                 let interval = setInterval(() => {
@@ -768,6 +816,12 @@ function drawSpinTempleStyleRestart(rect) {
                     if (timer >= 1000) {
                         clearInterval(interval);
                         spinning = false;
+
+                        // Immediately cut off spin sound when reels stop
+                        if (spinSfx) {
+                            spinSfx.pause();
+                            spinSfx.currentTime = 0;
+                        }
 
                         let payout = 0;
                         if (reels[0] === reels[1] && reels[1] === reels[2]) {
@@ -873,13 +927,12 @@ function drawSpinTempleStyleRestart(rect) {
             drawOutlinedText(`Highest Loot  $${highscore.toLocaleString()}`, 95, 38, "bold 18px Georgia", SOFT_GOLD, DARK_BROWN, "left");
             drawOutlinedText(`Treasure Hunt $${balance.toLocaleString()}`, 95, 65, "bold 20px Georgia", WHITE, DARK_BROWN, "left");
 
-            // --- AUDIO CONTROL RACK ---
+            // --- AUDIO CONTROL RACK (SlotPirates Style Icons on Dark Brown Background) ---
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(musicMuteRect.x, musicMuteRect.y, musicMuteRect.w, musicMuteRect.h, 6); ctx.fill(); ctx.stroke();
-            ctx.drawImage(musicMuted ? muteImg : speakerImg, musicMuteRect.x + 3, musicMuteRect.y + 3, 18, 18);
+            drawSlotPiratesAudioIcon(musicMuteRect.x + 12, musicMuteRect.y + 12, 'music', musicMuted);
             ctx.fillStyle = "#1a0a00"; ctx.fillRect(musicSliderRect.x, musicSliderRect.y + 4, musicSliderRect.w, 4);
             ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(musicSliderRect.x + (musicVolume * musicSliderRect.w), musicSliderRect.y + 6, 5, 0, Math.PI * 2); ctx.fill();
-            drawOutlinedText("", musicMuteRect.x + 12, musicMuteRect.y - 8, "bold 8px Georgia", SOFT_GOLD, DARK_BROWN);
 
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y, playlistDropdownRect.w, playlistDropdownRect.h, 6); ctx.fill(); ctx.stroke();
@@ -895,10 +948,9 @@ function drawSpinTempleStyleRestart(rect) {
 
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(soundsMuteRect.x, soundsMuteRect.y, soundsMuteRect.w, soundsMuteRect.h, 6); ctx.fill(); ctx.stroke();
-            ctx.drawImage(soundsMuted ? muteImg : speakerImg, soundsMuteRect.x + 3, soundsMuteRect.y + 3, 18, 18);
+            drawSlotPiratesAudioIcon(soundsMuteRect.x + 12, soundsMuteRect.y + 12, 'speaker', soundsMuted);
             ctx.fillStyle = "#1a0a00"; ctx.fillRect(soundsSliderRect.x, soundsSliderRect.y + 4, soundsSliderRect.w, 4);
             ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(soundsSliderRect.x + (soundsVolume * soundsSliderRect.w), soundsSliderRect.y + 6, 5, 0, Math.PI * 2); ctx.fill();
-            drawOutlinedText("", soundsMuteRect.x + 12, soundsMuteRect.y - 8, "bold 8px Georgia", SOFT_GOLD, DARK_BROWN);
 
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(timeToggleRect.x, timeToggleRect.y, timeToggleRect.w, timeToggleRect.h, 6); ctx.fill(); ctx.stroke();
@@ -934,7 +986,6 @@ function drawSpinTempleStyleRestart(rect) {
             drawPayoutOval();
             drawBetSliderOval();
 
-            // Render Spin button image and matching carved log style for Restart
             drawCustomButtonImage(spinBtnImg, spinPlankRect.x, spinPlankRect.y, spinPlankRect.w, spinPlankRect.h);
             drawSpinTempleStyleRestart(restartWheelRect);
 
