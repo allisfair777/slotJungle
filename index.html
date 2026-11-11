@@ -165,7 +165,7 @@
             fireflies.push({ x: Math.random() * 800, y: Math.random() * 400 + 150, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, alpha: Math.random() });
         }
 
-        // Layout Rectangles (Restart pulled in closer to center, buttons optimized)
+        // Layout Rectangles
         const logoRect = { x: 25, y: 25, w: 55, h: 55 };
         const payoutOvalRect = { x: 25, y: 295, w: 365, h: 140 };
         const betSliderOvalRect = { x: 410, y: 295, w: 365, h: 140 };
@@ -249,7 +249,7 @@
             ctx.restore();
         }
 
-        // Enhanced transparency filter for custom uploaded buttons (removes dark checkboards/backgrounds)
+        // Thorough transparency filter to completely eliminate checkered mesh backgrounds and smudges from uploaded jpegs
         function drawCustomButtonImage(img, x, y, w, h) {
             if (!img.complete || img.naturalWidth === 0) return;
             const tempCanvas = document.createElement('canvas');
@@ -262,8 +262,10 @@
             let data = imgData.data;
             for (let i = 0; i < data.length; i += 4) {
                 let r = data[i], g = data[i+1], b = data[i+2];
-                // Remove dark, gray, and checkered background pixels around the circular button
-                if ((r < 40 && g < 40 && b < 40) || (Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && r > 100 && r < 170)) {
+                // Remove dark, gray, checkered, and neutral background pixels outside the circular button
+                if ((r < 45 && g < 45 && b < 45) || 
+                    (Math.abs(r - g) < 20 && Math.abs(g - b) < 20 && r > 90 && r < 190) ||
+                    (r > 190 && g > 190 && b > 190 && Math.abs(r - g) < 10)) {
                     data[i+3] = 0;
                 }
             }
@@ -494,7 +496,6 @@
 
             let rowY = [payoutOvalRect.y + 42, payoutOvalRect.y + 66, payoutOvalRect.y + 90, payoutOvalRect.y + 114];
 
-            // 1) Treasures text pulled closer to icons (+75px), Hazards nudged slightly left
             const textX = payoutOvalRect.x + 75;
             const hazX = payoutOvalRect.x + 195;
 
@@ -536,6 +537,9 @@
             drawOutlinedText(label, betSliderOvalRect.x + 110, betSliderOvalRect.y + 22, "bold 15px Georgia", SOFT_GOLD);
 
             let nodes = getBetArcNodes();
+            // Progressive step icons: Tiger ($100k), Monkey ($250k), Parrot ($500k), Jungle/All ($1M)
+            let stepIcons = [tigerImg, monkeyImg, parrotImg, jungleImg];
+
             betSteps.forEach((val, idx) => {
                 let node = nodes[idx];
                 let isSelected = (idx === betIndex) && !isBetAllActive;
@@ -544,10 +548,11 @@
 
                 ctx.save();
                 if (!isSelected) ctx.globalAlpha = 0.5;
-                ctx.drawImage(shibaImg, node.x - 14, node.y - 14, 28, 28);
+                ctx.drawImage(stepIcons[idx], node.x - 14, node.y - 14, 28, 28);
                 ctx.restore();
             });
 
+            // Bet All coin node uses Shiba
             let coin = nodes[4];
             ctx.fillStyle = isBetAllActive ? "#ffd166" : "#4a2d11";
             ctx.strokeStyle = isBetAllActive ? "#fff" : SOFT_GOLD;
@@ -871,7 +876,7 @@
             drawPayoutOval();
             drawBetSliderOval();
 
-            // Render custom transparent button images (`spin.jpg` & `restart.jpg`)
+            // Render clean custom button images with background removed
             drawCustomButtonImage(spinBtnImg, spinPlankRect.x, spinPlankRect.y, spinPlankRect.w, spinPlankRect.h);
             drawCustomButtonImage(restartBtnImg, restartWheelRect.x, restartWheelRect.y, restartWheelRect.w, restartWheelRect.h);
 
