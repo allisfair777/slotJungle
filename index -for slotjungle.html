@@ -88,8 +88,6 @@
         const parrotImg = new Image(); parrotImg.src = "parrot.png";
         const monkeyImg = new Image(); monkeyImg.src = "monkey.png";
         const jungleImg = new Image(); jungleImg.src = "jungle.png";
-        const speakerImg = new Image(); speakerImg.src = "speaker.png";
-        const muteImg = new Image(); muteImg.src = "mute.png";
         
         const slingshotImg = new Image(); slingshotImg.src = "slingshot.png";
         const vineImg = new Image(); vineImg.src = "leftvine.png";
@@ -164,7 +162,7 @@
             fireflies.push({ x: Math.random() * 800, y: Math.random() * 400 + 150, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, alpha: Math.random() });
         }
 
-        // Layout Rectangles (Playlist width set to 85px to stretch exactly to the end of the music volume line)
+        // Layout Rectangles
         const logoRect = { x: 25, y: 25, w: 55, h: 55 };
         const payoutOvalRect = { x: 25, y: 295, w: 365, h: 140 };
         const betSliderOvalRect = { x: 410, y: 295, w: 365, h: 140 };
@@ -197,10 +195,12 @@
                 }
             }
 
-            let sfxList = [document.getElementById("spinSound"), document.getElementById("winSound"), document.getElementById("clickSound"), document.getElementById("hitSound")];
+            let sfxList = [document.getElementById("winSound"), document.getElementById("clickSound"), document.getElementById("hitSound")];
             sfxList.forEach(sfx => {
                 if (sfx) sfx.volume = soundsMuted ? 0 : soundsVolume;
             });
+            let spinSfx = document.getElementById("spinSound");
+            if (spinSfx) spinSfx.volume = soundsMuted ? 0 : soundsVolume;
         }
 
         function playSound(soundObj) {
@@ -270,52 +270,107 @@
             ctx.drawImage(tempCanvas, x, y, w, h);
         }
 
-        // Carved wooden log style for Restart matching Spin Temple artwork
         function drawSpinTempleStyleRestart(rect) {
             ctx.save();
             let cx = rect.x + rect.w / 2;
             let cy = rect.y + rect.h / 2;
-            let rx = rect.w / 2;
-            let ry = rect.h / 2;
 
-            // Outer dark bark shadow
-            ctx.fillStyle = "#2a1405";
+            ctx.fillStyle = "#140702";
             ctx.beginPath();
-            ctx.ellipse(cx, cy + 3, rx, ry, 0, 0, Math.PI * 2);
+            ctx.roundRect(rect.x + 2, rect.y + 3, rect.w, rect.h, 22);
             ctx.fill();
 
-            // Rough bark rim layer
-            ctx.fillStyle = "#4a2408";
-            ctx.strokeStyle = "#1b0a02";
+            let outerGrad = ctx.createLinearGradient(rect.x, rect.y, rect.x, rect.y + rect.h);
+            outerGrad.addColorStop(0, "#4a2408");
+            outerGrad.addColorStop(0.5, "#2d1404");
+            outerGrad.addColorStop(1, "#180a02");
+
+            ctx.fillStyle = outerGrad;
+            ctx.strokeStyle = "#0d0401";
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+            ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 20);
             ctx.fill();
             ctx.stroke();
 
-            // Inner wood log face with gradient
-            let logGrad = ctx.createRadialGradient(cx, cy, 5, cx, cy, rx);
-            logGrad.addColorStop(0, "#c28846");
-            logGrad.addColorStop(0.7, "#8c5520");
-            logGrad.addColorStop(1, "#59310c");
+            let faceGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, rect.w / 2);
+            faceGrad.addColorStop(0, "#8c5520");
+            faceGrad.addColorStop(0.6, "#542f10");
+            faceGrad.addColorStop(1, "#281203");
 
-            ctx.fillStyle = logGrad;
-            ctx.strokeStyle = "#381c06";
+            ctx.fillStyle = faceGrad;
+            ctx.strokeStyle = "#1a0b02";
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.ellipse(cx, cy, rx - 6, ry - 6, 0, 0, Math.PI * 2);
+            ctx.roundRect(rect.x + 6, rect.y + 6, rect.w - 12, rect.h - 12, 14);
             ctx.fill();
             ctx.stroke();
 
-            // Carved wood rings
-            ctx.strokeStyle = "rgba(74, 36, 8, 0.45)";
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.ellipse(cx, cy, rx - 12, ry - 12, 0, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.save();
+            ctx.font = "bold 15px Georgia, serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.lineWidth = 3.5;
 
-            // Carved text: RESTART with golden relief
-            drawOutlinedText("RESTART", cx, cy, "bold 15px Georgia", SOFT_GOLD, "#2b1404");
+            ctx.strokeStyle = "#120501";
+            ctx.strokeText("RESTART", cx, cy);
+            
+            let textGrad = ctx.createLinearGradient(cx, cy - 8, cx, cy + 8);
+            textGrad.addColorStop(0, "#ffeb80");
+            textGrad.addColorStop(0.5, "#f5cb5c");
+            textGrad.addColorStop(1, "#c29b2e");
+            
+            ctx.fillStyle = textGrad;
+            ctx.fillText("RESTART", cx, cy);
+            
+            ctx.restore();
+            ctx.restore();
+        }
+
+        // SlotPirates style vector audio icon drawer
+        function drawSlotPiratesAudioIcon(cx, cy, type, isMuted) {
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            ctx.fillStyle = isMuted ? "#888" : SOFT_GOLD;
+            ctx.strokeStyle = isMuted ? "#888" : SOFT_GOLD;
+            ctx.lineWidth = 2;
+
+            if (type === 'music') {
+                ctx.beginPath();
+                ctx.arc(-3, 3, 2.8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillRect(0, -5, 1.8, 8);
+                ctx.beginPath();
+                ctx.arc(5, 1, 2.8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillRect(8, -7, 1.8, 8);
+                ctx.fillRect(0, -7, 10, 2);
+            } else if (type === 'speaker') {
+                ctx.beginPath();
+                ctx.moveTo(-5, -2);
+                ctx.lineTo(-2, -2);
+                ctx.lineTo(2, -6);
+                ctx.lineTo(2, 6);
+                ctx.lineTo(-2, 2);
+                ctx.lineTo(-5, 2);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(4, 0, 3, -Math.PI/3, Math.PI/3, false);
+                ctx.stroke();
+            }
+
+            if (isMuted) {
+                ctx.strokeStyle = "#ff3333";
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(-7, -7);
+                ctx.lineTo(7, 7);
+                ctx.stroke();
+            }
+
             ctx.restore();
         }
 
@@ -328,7 +383,7 @@
                 this.rot = Math.random() * Math.PI;
                 this.vRot = (Math.random() - 0.5) * 0.1;
                 this.alpha = 1.0;
-                this.life = 160;
+                this.life = 120;
                 let colors = ["#ff70a6", "#ff9770", "#ffd670", "#e9ff70", "#70d6ff"];
                 this.color = colors[Math.floor(Math.random() * colors.length)];
                 this.size = Math.random() * 5 + 4;
@@ -558,13 +613,13 @@
             drawOutlinedText("Jackpot - $50,000,000", textX, rowY[3], "bold 10px Georgia", WHITE, DARK_BROWN, "left");
 
             drawOutlinedText("Jaguar Trap", hazX + 25, rowY[0], "bold 11px Georgia", "#ffb3b3", DARK_BROWN, "left");
-            drawOutlinedText("-1%", hazX + 130, rowY[0], "bold 11px Georgia", "#ff6666", DARK_BROWN, "right");
+            drawOutlinedText("-1%", hazX + 138, rowY[0], "bold 11px Georgia", "#ff6666", DARK_BROWN, "right");
             drawOutlinedText("Venom Vine", hazX + 25, rowY[1], "bold 11px Georgia", "#ffb3b3", DARK_BROWN, "left");
-            drawOutlinedText("-5%", hazX + 130, rowY[1], "bold 11px Georgia", "#ff6666", DARK_BROWN, "right");
+            drawOutlinedText("-5%", hazX + 138, rowY[1], "bold 11px Georgia", "#ff6666", DARK_BROWN, "right");
             drawOutlinedText("Quicksand", hazX + 25, rowY[2], "bold 11px Georgia", "#ffb3b3", DARK_BROWN, "left");
-            drawOutlinedText("-10%", hazX + 130, rowY[2], "bold 11px Georgia", "#ff6666", DARK_BROWN, "right");
+            drawOutlinedText("-10%", hazX + 138, rowY[2], "bold 11px Georgia", "#ff6666", DARK_BROWN, "right");
             drawOutlinedText("Temple Curse", hazX + 25, rowY[3], "bold 11px Georgia", "#ffb3b3", DARK_BROWN, "left");
-            drawOutlinedText("-15%", hazX + 130, rowY[3], "bold 11px Georgia", "#ff6666", DARK_BROWN, "right");
+            drawOutlinedText("-15%", hazX + 138, rowY[3], "bold 11px Georgia", "#ff6666", DARK_BROWN, "right");
 
             ctx.restore();
         }
@@ -741,7 +796,14 @@
                 hazardActive = false;
                 activeHazard = null;
                 stoneProjectile = null;
-                playSound(spinSound);
+                
+                // Play spin sound synchronized with the spin duration
+                let spinSfx = document.getElementById("spinSound");
+                if (!soundsMuted && spinSfx) {
+                    spinSfx.currentTime = 0;
+                    spinSfx.volume = soundsVolume;
+                    spinSfx.play().catch(e => {});
+                }
 
                 let timer = 0;
                 let interval = setInterval(() => {
@@ -754,6 +816,12 @@
                     if (timer >= 1000) {
                         clearInterval(interval);
                         spinning = false;
+
+                        // Immediately cut off spin sound when reels stop
+                        if (spinSfx) {
+                            spinSfx.pause();
+                            spinSfx.currentTime = 0;
+                        }
 
                         let payout = 0;
                         if (reels[0] === reels[1] && reels[1] === reels[2]) {
@@ -859,13 +927,12 @@
             drawOutlinedText(`Highest Loot  $${highscore.toLocaleString()}`, 95, 38, "bold 18px Georgia", SOFT_GOLD, DARK_BROWN, "left");
             drawOutlinedText(`Treasure Hunt $${balance.toLocaleString()}`, 95, 65, "bold 20px Georgia", WHITE, DARK_BROWN, "left");
 
-            // --- AUDIO CONTROL RACK ---
+            // --- AUDIO CONTROL RACK (SlotPirates Style Icons on Dark Brown Background) ---
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(musicMuteRect.x, musicMuteRect.y, musicMuteRect.w, musicMuteRect.h, 6); ctx.fill(); ctx.stroke();
-            ctx.drawImage(musicMuted ? muteImg : speakerImg, musicMuteRect.x + 3, musicMuteRect.y + 3, 18, 18);
+            drawSlotPiratesAudioIcon(musicMuteRect.x + 12, musicMuteRect.y + 12, 'music', musicMuted);
             ctx.fillStyle = "#1a0a00"; ctx.fillRect(musicSliderRect.x, musicSliderRect.y + 4, musicSliderRect.w, 4);
             ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(musicSliderRect.x + (musicVolume * musicSliderRect.w), musicSliderRect.y + 6, 5, 0, Math.PI * 2); ctx.fill();
-            drawOutlinedText("MUSIC", musicMuteRect.x + 12, musicMuteRect.y - 8, "bold 8px Georgia", SOFT_GOLD, DARK_BROWN);
 
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(playlistDropdownRect.x, playlistDropdownRect.y, playlistDropdownRect.w, playlistDropdownRect.h, 6); ctx.fill(); ctx.stroke();
@@ -881,10 +948,9 @@
 
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(soundsMuteRect.x, soundsMuteRect.y, soundsMuteRect.w, soundsMuteRect.h, 6); ctx.fill(); ctx.stroke();
-            ctx.drawImage(soundsMuted ? muteImg : speakerImg, soundsMuteRect.x + 3, soundsMuteRect.y + 3, 18, 18);
+            drawSlotPiratesAudioIcon(soundsMuteRect.x + 12, soundsMuteRect.y + 12, 'speaker', soundsMuted);
             ctx.fillStyle = "#1a0a00"; ctx.fillRect(soundsSliderRect.x, soundsSliderRect.y + 4, soundsSliderRect.w, 4);
             ctx.fillStyle = SOFT_GOLD; ctx.beginPath(); ctx.arc(soundsSliderRect.x + (soundsVolume * soundsSliderRect.w), soundsSliderRect.y + 6, 5, 0, Math.PI * 2); ctx.fill();
-            drawOutlinedText("SOUNDS", soundsMuteRect.x + 12, soundsMuteRect.y - 8, "bold 8px Georgia", SOFT_GOLD, DARK_BROWN);
 
             ctx.fillStyle = "#7a3e10"; ctx.strokeStyle = DARK_BROWN; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.roundRect(timeToggleRect.x, timeToggleRect.y, timeToggleRect.w, timeToggleRect.h, 6); ctx.fill(); ctx.stroke();
@@ -920,7 +986,6 @@
             drawPayoutOval();
             drawBetSliderOval();
 
-            // Render Spin button image and matching carved log style for Restart
             drawCustomButtonImage(spinBtnImg, spinPlankRect.x, spinPlankRect.y, spinPlankRect.w, spinPlankRect.h);
             drawSpinTempleStyleRestart(restartWheelRect);
 

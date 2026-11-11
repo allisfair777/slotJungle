@@ -94,6 +94,9 @@
 
         // Custom Button Image (Spin Temple)
         const spinBtnImg = new Image(); spinBtnImg.src = "spin.jpg";
+	// Custom Button Image (Restart)
+        const spinBtnImg = new Image(); restartBtnImg.src = "restart.jpg";
+
 
         const hazardImages = {
             'jaguar': (() => { let img = new Image(); img.src = "jaguar.png"; return img; })(),
@@ -987,7 +990,9 @@
             drawBetSliderOval();
 
             drawCustomButtonImage(spinBtnImg, spinPlankRect.x, spinPlankRect.y, spinPlankRect.w, spinPlankRect.h);
-            drawSpinTempleStyleRestart(restartWheelRect);
+            //drawSpinTempleStyleRestart(restartWheelRect);
+	    drawCustomButtonImage(restartBtnImg, spinPlankRect.x-100, spinPlankRect.y, spinPlankRect.w, spinPlankRect.h);
+
 
             flowerParticles.forEach((fp, idx) => {
                 fp.update(dt);
