@@ -122,7 +122,6 @@
         let currentBet = betSteps[betIndex];
         let isBetAllActive = false;
         
-        // 3) Identical low load volumes
         let musicMuted = true;
         let musicVolume = 0.15;
         let soundsMuted = true;
@@ -142,7 +141,7 @@
         let isGameOver = false;
 
         let bannerText = "";
-        let bannerAlpha = 0; // Controlled fade rate for slow pacing (Requirement 4)
+        let bannerAlpha = 0;
         let flowerParticles = [];
         let screenShakeTimer = 0;
         let screenShakeIntensity = 0;
@@ -217,7 +216,8 @@
             screenShakeIntensity = intensity;
         }
 
-        function drawTransparentImage(img, x, y, w, h, flipH = false) {
+        // Helper to draw transparent images with optional rotation angle
+        function drawTransparentImageRotated(img, x, y, w, h, flipH = false, angle = 0) {
             if (!img.complete || img.naturalWidth === 0) return;
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = img.naturalWidth;
@@ -238,13 +238,10 @@
             tCtx.putImageData(imgData, 0, 0);
 
             ctx.save();
-            if (flipH) {
-                ctx.translate(x + w, y);
-                ctx.scale(-1, 1);
-                ctx.drawImage(tempCanvas, 0, 0, w, h);
-            } else {
-                ctx.drawImage(tempCanvas, x, y, w, h);
-            }
+            ctx.translate(x + w / 2, y + h / 2);
+            ctx.rotate(angle);
+            if (flipH) ctx.scale(-1, 1);
+            ctx.drawImage(tempCanvas, -w / 2, -h / 2, w, h);
             ctx.restore();
         }
 
@@ -257,7 +254,7 @@
                 this.rot = Math.random() * Math.PI;
                 this.vRot = (Math.random() - 0.5) * 0.1;
                 this.alpha = 1.0;
-                this.life = 160; // Slower fade for celebration particles
+                this.life = 160;
                 let colors = ["#ff70a6", "#ff9770", "#ffd670", "#e9ff70", "#70d6ff"];
                 this.color = colors[Math.floor(Math.random() * colors.length)];
                 this.size = Math.random() * 5 + 4;
@@ -352,7 +349,7 @@
             let symbolSize = 80;
             let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
 
-            // 1) Hazard Timeout Check (Extended to 45 Seconds for 3x longer duration)
+            // 4) Render Hazard Asset Image & Timer: Positioned above reel & below aiming arc
             if (hazardActive && activeHazard) {
                 let hazardDurationMs = 45000;
                 let elapsed = Date.now() - activeHazard.startTime;
@@ -361,36 +358,39 @@
                     let penalty = Math.max(500, Math.floor(balance * activeHazard.penaltyPct));
                     balance = Math.max(0, balance - penalty);
                     bannerText = `TIME OUT! -$${penalty.toLocaleString()} PENALTY`;
-                    bannerAlpha = 4.0; // Slower fade duration
+                    bannerAlpha = 4.0;
                     hazardActive = false;
                     activeHazard = null;
                 } else {
                     ctx.save();
                     let hx = reelStartX + activeHazard.reelIndex * 125 + 40;
-                    let hy = 240;
+                    let hy = 140; // Placed right above reel and below aim arc
 
                     let hImg = hazardImages[activeHazard.type];
                     if (hImg) {
-                        drawTransparentImage(hImg, hx - 35, hy - 35, 70, 70, false);
+                        drawTransparentImageRotated(hImg, hx - 22, hy - 22, 44, 44, false, 0);
                     }
 
+                    // Countdown bar
                     ctx.fillStyle = "#333";
-                    ctx.fillRect(hx - 25, hy - 50, 50, 6);
+                    ctx.fillRect(hx - 20, hy - 30, 40, 5);
                     ctx.fillStyle = timeLeft < 6000 ? "#ff3333" : "#4dff4d";
-                    ctx.fillRect(hx - 25, hy - 50, 50 * (timeLeft / hazardDurationMs), 6);
+                    ctx.fillRect(hx - 20, hy - 30, 40 * (timeLeft / hazardDurationMs), 5);
                     ctx.restore();
                 }
             }
 
+            // Aim Arc Indicator above target reel
             let aimX = reelStartX + currentAimReel * 125 + 40;
             ctx.save();
             ctx.strokeStyle = "#8b4513";
             ctx.lineWidth = 4;
             ctx.beginPath();
-            ctx.arc(aimX, 190, 45, Math.PI, 0, false);
+            ctx.arc(aimX, 185, 45, Math.PI, 0, false);
             ctx.stroke();
             ctx.restore();
 
+            // Flying Stone Projectile
             if (stoneProjectile) {
                 stoneProjectile.progress += 0.05;
                 let curX = stoneProjectile.startX + (stoneProjectile.targetX - stoneProjectile.startX) * stoneProjectile.progress;
@@ -423,12 +423,11 @@
                         let bonus = activeHazard.rewardBonus;
                         balance += bonus;
                         bannerText = `DIRECT HIT! BONUS +$${bonus.toLocaleString()}!`;
-                        bannerAlpha = 4.0; // Slower fade
+                        bannerAlpha = 4.0;
                         playSound(document.getElementById("hitSound"));
                         playSound(winSound);
                         triggerScreenShake(300, 6);
                         
-                        // 2) Celebratory splash centered directly over the hit hazard card!
                         let hitCardX = reelStartX + activeHazard.reelIndex * 125 + 40;
                         for (let i = 0; i < 50; i++) {
                             flowerParticles.push(new FlowerParticle(hitCardX, 240));
@@ -443,15 +442,21 @@
                 }
             }
 
+            // 1 & 2) Render Slingshot & Darker Vine Controls with Rotation and Clear Disable States
             ctx.save();
-            ctx.globalAlpha = (currentAimReel === 0) ? 0.4 : 1.0;
-            drawTransparentImage(vineImg, leftVineBtnRect.x, leftVineBtnRect.y, leftVineBtnRect.w, leftVineBtnRect.h, false);
+            
+            // Left Vine Button (Darker Green, Dimmed when disabled at Reel 0)
+            ctx.globalAlpha = (currentAimReel === 0) ? 0.25 : 0.95;
+            drawTransparentImageRotated(vineImg, leftVineBtnRect.x, leftVineBtnRect.y, leftVineBtnRect.w, leftVineBtnRect.h, false, 0);
 
-            ctx.globalAlpha = (currentAimReel === 2) ? 0.4 : 1.0;
-            drawTransparentImage(vineImg, rightVineBtnRect.x, rightVineBtnRect.y, rightVineBtnRect.w, rightVineBtnRect.h, true);
+            // Right Vine Button (Darker Green, Dimmed when disabled at Reel 2)
+            ctx.globalAlpha = (currentAimReel === 2) ? 0.25 : 0.95;
+            drawTransparentImageRotated(vineImg, rightVineBtnRect.x, rightVineBtnRect.y, rightVineBtnRect.w, rightVineBtnRect.h, true, 0);
             ctx.globalAlpha = 1.0;
 
-            drawTransparentImage(slingshotImg, slingshotBtnRect.x - 5, slingshotBtnRect.y, 55, 60, false);
+            // Slingshot Rotation: Tilted Left (-0.35 rad) for Reel 0, Upright (0 rad) for Reel 1, Tilted Right (+0.35 rad) for Reel 2
+            let slingshotAngle = (currentAimReel === 0) ? -0.35 : (currentAimReel === 2) ? 0.35 : 0;
+            drawTransparentImageRotated(slingshotImg, slingshotBtnRect.x - 5, slingshotBtnRect.y, 55, 60, false, slingshotAngle);
             ctx.restore();
         }
 
@@ -470,15 +475,15 @@
 
             let rowY = [payoutOvalRect.y + 42, payoutOvalRect.y + 66, payoutOvalRect.y + 90, payoutOvalRect.y + 114];
 
-            // 6) Clarified 3x Payout Labeling
+            // 3) Updated Payout Titles: 3x All ($75k) and 3x Any ($50k)
             ctx.drawImage(shibaImg, payoutOvalRect.x + 20, rowY[0] - 10, 20, 20);
             drawOutlinedText("3x Shiba - $100,000", payoutOvalRect.x + 85, rowY[0], "10px Arial bold", WHITE, DARK_BROWN, "left");
 
             ctx.drawImage(jungleImg, payoutOvalRect.x + 20, rowY[1] - 10, 20, 20);
-            drawOutlinedText("3x Wild - $75,000", payoutOvalRect.x + 85, rowY[1], "10px Arial bold", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("3x All - $75,000", payoutOvalRect.x + 85, rowY[1], "10px Arial bold", WHITE, DARK_BROWN, "left");
 
             ctx.drawImage(monkeyImg, payoutOvalRect.x + 20, rowY[2] - 10, 20, 20);
-            drawOutlinedText("3x Animals - $50,000", payoutOvalRect.x + 85, rowY[2], "10px Arial bold", WHITE, DARK_BROWN, "left");
+            drawOutlinedText("3x Any - $50,000", payoutOvalRect.x + 85, rowY[2], "10px Arial bold", WHITE, DARK_BROWN, "left");
 
             ctx.drawImage(tigerImg, payoutOvalRect.x + 20, rowY[3] - 10, 20, 20);
             drawOutlinedText("2x Any - $25,000", payoutOvalRect.x + 85, rowY[3], "10px Arial bold", WHITE, DARK_BROWN, "left");
@@ -709,7 +714,7 @@
                         if (payout > 0) {
                             balance += payout;
                             bannerText = `WIN! +$${payout.toLocaleString()}`;
-                            bannerAlpha = 4.0; // Slower win banner fade
+                            bannerAlpha = 4.0;
                             playSound(winSound);
                             triggerScreenShake(300, 6);
                             for(let i=0; i<35; i++) flowerParticles.push(new FlowerParticle(400, 250));
@@ -731,9 +736,9 @@
                                 };
                                 hazardActive = true;
 
-                                // 5) Include hazard name and clear prompt
-                                bannerText = `${chosenType.toUpperCase()} ON REEL ${targetReel+1}! AIM & FIRE!`;
-                                bannerAlpha = 4.0; // Slower fade for hazard warning
+                                // 4) Brief hazard message placed higher (y: 95) without exclamation marks
+                                bannerText = `${chosenType.toUpperCase()} REEL ${targetReel + 1}`;
+                                bannerAlpha = 4.0;
                                 triggerScreenShake(400, 8);
                             }
                         }
@@ -848,11 +853,11 @@
                 }
             }
 
-            // 4) Slower banner fade rate (0.003 instead of 0.008)
+            // 4) Brief notification banner moved up to y: 95 to avoid top drop down
             if (bannerAlpha > 0) {
                 ctx.save();
                 ctx.globalAlpha = Math.min(1.0, bannerAlpha);
-                drawOutlinedText(bannerText, canvas.width / 2, 115, "19px Arial bold", SOFT_GOLD, DARK_BROWN);
+                drawOutlinedText(bannerText, canvas.width / 2, 95, "18px Arial bold", SOFT_GOLD, DARK_BROWN);
                 ctx.restore();
                 bannerAlpha -= 0.003;
             }
