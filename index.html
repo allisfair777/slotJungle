@@ -422,6 +422,14 @@
         }
 
         function drawHazardAndDefenseGraphics() {
+            // Freeze hazard mechanics completely if game is over
+            if (isGameOver) {
+                hazardActive = false;
+                activeHazard = null;
+                stoneProjectile = null;
+                return;
+            }
+
             let symbolSize = 80;
             let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
 
@@ -436,6 +444,13 @@
                     bannerAlpha = 4.0;
                     hazardActive = false;
                     activeHazard = null;
+
+                    if (balance <= 0) {
+                        balance = 0;
+                        isGameOver = true;
+                        bannerText = "GAME OVER: OUT OF TREASURE";
+                        bannerAlpha = 5.0;
+                    }
                 } else {
                     ctx.save();
                     let hx = reelStartX + activeHazard.reelIndex * 125 + 40;
@@ -680,17 +695,18 @@
             }
 
             if (x >= leftVineBtnRect.x && x <= leftVineBtnRect.x + leftVineBtnRect.w && y >= leftVineBtnRect.y && y <= leftVineBtnRect.y + leftVineBtnRect.h) {
-                if (currentAimReel > 0) currentAimReel--;
+                if (!isGameOver && currentAimReel > 0) currentAimReel--;
                 playSound(clickSound);
                 return;
             }
             if (x >= rightVineBtnRect.x && x <= rightVineBtnRect.x + rightVineBtnRect.w && y >= rightVineBtnRect.y && y <= rightVineBtnRect.y + rightVineBtnRect.h) {
-                if (currentAimReel < 2) currentAimReel++;
+                if (!isGameOver && currentAimReel < 2) currentAimReel++;
                 playSound(clickSound);
                 return;
             }
 
             if (x >= slingshotBtnRect.x && x <= slingshotBtnRect.x + slingshotBtnRect.w && y >= slingshotBtnRect.y && y <= slingshotBtnRect.y + slingshotBtnRect.h) {
+                if (isGameOver) return; // Slingshot disabled during Game Over
                 playSound(clickSound);
                 let symbolSize = 80;
                 let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
@@ -709,7 +725,7 @@
 
             let nodes = getBetArcNodes();
             if (Math.hypot(x - nodes[4].x, y - nodes[4].y) <= 22) {
-                if (balance > 0) {
+                if (balance > 0 && !isGameOver) {
                     isBetAllActive = !isBetAllActive;
                     currentBet = isBetAllActive ? balance : betSteps[betIndex];
                     playSound(clickSound);
@@ -718,6 +734,7 @@
             }
 
             if (x >= betSliderOvalRect.x && x <= betSliderOvalRect.x + betSliderOvalRect.w && y >= betSliderOvalRect.y && y <= betSliderOvalRect.y + betSliderOvalRect.h) {
+                if (isGameOver) return;
                 let closest = 0, minD = Infinity;
                 nodes.forEach((n, idx) => {
                     let d = Math.hypot(x - n.x, y - n.y);
@@ -739,7 +756,6 @@
                     return;
                 }
 
-                // FIX: Apply hazard penalty immediately if user spins while hazard is active & ignored
                 if (hazardActive && activeHazard) {
                     let penalty = Math.max(5000, Math.floor(balance * activeHazard.penaltyPct));
                     balance = Math.max(0, balance - penalty);
@@ -841,6 +857,9 @@
                         if (balance <= 0) {
                             balance = 0;
                             isGameOver = true;
+                            hazardActive = false;
+                            activeHazard = null;
+                            stoneProjectile = null;
                             bannerText = "GAME OVER: OUT OF TREASURE";
                             bannerAlpha = 5.0;
                         }
@@ -879,13 +898,10 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (bgImg.complete && bgImg.naturalWidth !== 0) {
-                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.width * (canvas.height / canvas.width)); // fallback scaled or regular
+                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
             } else {
                 ctx.fillStyle = "#1b4931";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
-            if (bgImg.complete && bgImg.naturalWidth !== 0) {
-                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
             }
 
             drawEnvironmentOverlay();
