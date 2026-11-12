@@ -422,7 +422,6 @@
         }
 
         function drawHazardAndDefenseGraphics() {
-            // Freeze hazard mechanics completely if game is over
             if (isGameOver) {
                 hazardActive = false;
                 activeHazard = null;
@@ -434,7 +433,7 @@
             let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
 
             if (hazardActive && activeHazard) {
-                let hazardDurationMs = 10000;
+                let hazardDurationMs = 15000;
                 let elapsed = Date.now() - activeHazard.startTime;
                 let timeLeft = Math.max(0, hazardDurationMs - elapsed);
                 if (timeLeft === 0) {
@@ -454,17 +453,19 @@
                 } else {
                     ctx.save();
                     let hx = reelStartX + activeHazard.reelIndex * 125 + 40;
-                    let hy = 140;
+                    let hy = 135;
 
                     let hImg = hazardImages[activeHazard.type];
                     if (hImg) {
                         drawTransparentImageRotated(hImg, hx - 22, hy - 22, 44, 44, false, 0);
                     }
 
+                    // Timer progress bar placed cleanly below the hazard image
+                    let barY = hy + 26;
                     ctx.fillStyle = "#333";
-                    ctx.fillRect(hx - 20, hy - 30, 40, 5);
-                    ctx.fillStyle = timeLeft < 6000 ? "#ff3333" : "#4dff4d";
-                    ctx.fillRect(hx - 20, hy - 30, 40 * (timeLeft / hazardDurationMs), 5);
+                    ctx.fillRect(hx - 20, barY, 40, 5);
+                    ctx.fillStyle = timeLeft < 5000 ? "#ff3333" : "#4dff4d";
+                    ctx.fillRect(hx - 20, barY, 40 * (timeLeft / hazardDurationMs), 5);
                     ctx.restore();
                 }
             }
@@ -602,19 +603,26 @@
             let nodes = getBetArcNodes();
             let stepIcons = [tigerImg, monkeyImg, parrotImg, jungleImg];
 
+            // Grey out bet steps if balance is too low or game is over
             betSteps.forEach((val, idx) => {
                 let node = nodes[idx];
                 let isSelected = (idx === betIndex) && !isBetAllActive;
+                let canAfford = balance >= val && !isGameOver;
                 let displayVal = val >= 1000000 ? `$${val/1000000}M` : `$${val/1000}k`;
-                drawOutlinedText(displayVal, node.x, node.y + 22, "bold 11px Georgia", isSelected ? SOFT_GOLD : "#ddd");
-
+                
                 ctx.save();
-                if (!isSelected) ctx.globalAlpha = 0.5;
+                if (!canAfford) ctx.globalAlpha = 0.3;
+                else if (!isSelected) ctx.globalAlpha = 0.6;
+                
+                drawOutlinedText(displayVal, node.x, node.y + 22, "bold 11px Georgia", isSelected && canAfford ? SOFT_GOLD : "#ddd");
                 ctx.drawImage(stepIcons[idx], node.x - 14, node.y - 14, 28, 28);
                 ctx.restore();
             });
 
             let coin = nodes[4];
+            let canBetAll = balance > 0 && !isGameOver;
+            ctx.save();
+            if (!canBetAll) ctx.globalAlpha = 0.3;
             ctx.fillStyle = isBetAllActive ? "#ffd166" : "#4a2d11";
             ctx.strokeStyle = isBetAllActive ? "#fff" : SOFT_GOLD;
             ctx.lineWidth = 2;
@@ -624,6 +632,7 @@
             ctx.stroke();
             ctx.drawImage(shibaImg, coin.x - 14, coin.y - 14, 28, 28);
             drawOutlinedText("Bet All", coin.x, coin.y + 26, "bold 10px Georgia", isBetAllActive ? SOFT_GOLD : "#ddd");
+            ctx.restore();
 
             ctx.restore();
         }
@@ -706,7 +715,7 @@
             }
 
             if (x >= slingshotBtnRect.x && x <= slingshotBtnRect.x + slingshotBtnRect.w && y >= slingshotBtnRect.y && y <= slingshotBtnRect.y + slingshotBtnRect.h) {
-                if (isGameOver) return; // Slingshot disabled during Game Over
+                if (isGameOver) return;
                 playSound(clickSound);
                 let symbolSize = 80;
                 let reelStartX = (canvas.width - (3 * symbolSize + 2 * 45)) / 2;
@@ -756,6 +765,10 @@
                     return;
                 }
 
+                // Clear stale banner messages before evaluating new spin/hazard state
+                bannerText = "";
+                bannerAlpha = 0;
+
                 if (hazardActive && activeHazard) {
                     let penalty = Math.max(5000, Math.floor(balance * activeHazard.penaltyPct));
                     balance = Math.max(0, balance - penalty);
@@ -771,6 +784,10 @@
                         bannerText = "GAME OVER: OUT OF TREASURE";
                         bannerAlpha = 5.0;
                         return;
+                    }
+                    if (balance < currentBet) {
+                        currentBet = balance;
+                        if (balance <= 0) return;
                     }
                 }
 

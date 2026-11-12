@@ -460,7 +460,6 @@
                         drawTransparentImageRotated(hImg, hx - 22, hy - 22, 44, 44, false, 0);
                     }
 
-                    // Timer progress bar placed cleanly below the hazard image
                     let barY = hy + 26;
                     ctx.fillStyle = "#333";
                     ctx.fillRect(hx - 20, barY, 40, 5);
@@ -603,7 +602,7 @@
             let nodes = getBetArcNodes();
             let stepIcons = [tigerImg, monkeyImg, parrotImg, jungleImg];
 
-            // Grey out bet steps if balance is too low or game is over
+            // Grey out bet steps if balance is too low or game is over, or if Bet All is active
             betSteps.forEach((val, idx) => {
                 let node = nodes[idx];
                 let isSelected = (idx === betIndex) && !isBetAllActive;
@@ -612,17 +611,23 @@
                 
                 ctx.save();
                 if (!canAfford) ctx.globalAlpha = 0.3;
-                else if (!isSelected) ctx.globalAlpha = 0.6;
+                else if (!isSelected) ctx.globalAlpha = isBetAllActive ? 0.35 : 0.6; // Dim step numbers if Bet All is active
                 
-                drawOutlinedText(displayVal, node.x, node.y + 22, "bold 11px Georgia", isSelected && canAfford ? SOFT_GOLD : "#ddd");
+                drawOutlinedText(displayVal, node.x, node.y + 22, "bold 11px Georgia", isSelected && !isBetAllActive && canAfford ? SOFT_GOLD : "#ddd");
                 ctx.drawImage(stepIcons[idx], node.x - 14, node.y - 14, 28, 28);
                 ctx.restore();
             });
 
+            // Bet All Coin
             let coin = nodes[4];
             let canBetAll = balance > 0 && !isGameOver;
             ctx.save();
-            if (!canBetAll) ctx.globalAlpha = 0.3;
+            if (!canBetAll) {
+                ctx.globalAlpha = 0.3;
+            } else if (!isBetAllActive) {
+                ctx.globalAlpha = 0.45; // Greyed out look when Bet All is inactive, matching Slot Pirates reference
+            }
+            
             ctx.fillStyle = isBetAllActive ? "#ffd166" : "#4a2d11";
             ctx.strokeStyle = isBetAllActive ? "#fff" : SOFT_GOLD;
             ctx.lineWidth = 2;
@@ -631,7 +636,7 @@
             ctx.fill();
             ctx.stroke();
             ctx.drawImage(shibaImg, coin.x - 14, coin.y - 14, 28, 28);
-            drawOutlinedText("Bet All", coin.x, coin.y + 26, "bold 10px Georgia", isBetAllActive ? SOFT_GOLD : "#ddd");
+            drawOutlinedText("Bet All", coin.x, coin.y + 26, "bold 10px Georgia", isBetAllActive ? SOFT_GOLD : "#aaa");
             ctx.restore();
 
             ctx.restore();
@@ -765,7 +770,6 @@
                     return;
                 }
 
-                // Clear stale banner messages before evaluating new spin/hazard state
                 bannerText = "";
                 bannerAlpha = 0;
 
