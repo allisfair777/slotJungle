@@ -460,7 +460,7 @@
                         drawTransparentImageRotated(hImg, hx - 22, hy - 22, 44, 44, false, 0);
                     }
 
-                    // FIX 1: Timer progress bar placed cleanly below the hazard image
+                    // Timer progress bar placed cleanly below the hazard image
                     let barY = hy + 26;
                     ctx.fillStyle = "#333";
                     ctx.fillRect(hx - 20, barY, 40, 5);
@@ -603,7 +603,7 @@
             let nodes = getBetArcNodes();
             let stepIcons = [tigerImg, monkeyImg, parrotImg, jungleImg];
 
-            // FIX 4: Grey out bet steps if balance is too low or game is over
+            // Grey out bet steps if balance is too low or game is over
             betSteps.forEach((val, idx) => {
                 let node = nodes[idx];
                 let isSelected = (idx === betIndex) && !isBetAllActive;
@@ -749,7 +749,6 @@
                     let d = Math.hypot(x - n.x, y - n.y);
                     if (d < minD) { minD = d; closest = idx; }
                 });
-                // FIX 4: Prevent selecting unaffordable bet steps
                 if (closest < 4 && balance >= betSteps[closest]) {
                     isBetAllActive = false;
                     betIndex = closest;
@@ -765,6 +764,10 @@
                     bannerAlpha = 3.0;
                     return;
                 }
+
+                // Clear stale banner messages before evaluating new spin/hazard state
+                bannerText = "";
+                bannerAlpha = 0;
 
                 if (hazardActive && activeHazard) {
                     let penalty = Math.max(5000, Math.floor(balance * activeHazard.penaltyPct));
@@ -782,11 +785,11 @@
                         bannerAlpha = 5.0;
                         return;
                     }
+                    if (balance < currentBet) {
+                        currentBet = balance;
+                        if (balance <= 0) return;
+                    }
                 }
-
-                // FIX 2: Clear any old persistent banner message when a new spin starts
-                bannerText = "";
-                bannerAlpha = 0;
 
                 balance -= currentBet;
                 spinning = true;
